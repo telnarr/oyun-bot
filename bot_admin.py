@@ -9,6 +9,9 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
+# Import from bot_main
+from bot_main import db, Config
+
 # ============================================================================
 # ADMIN PANELİ
 # ============================================================================
@@ -203,7 +206,7 @@ async def admin_promo_create_menu(update: Update, context: ContextTypes.DEFAULT_
     )
 
 async def admin_promo_delete_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Promo kod silme menüsü - YENİ SİSTEM"""
+    """Promo kod silme menüsü"""
     query = update.callback_query
 
     promo_codes = db.get_all_promo_codes()
@@ -280,7 +283,7 @@ async def admin_sponsor_add_menu(update: Update, context: ContextTypes.DEFAULT_T
     )
 
 async def admin_sponsor_delete_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sponsor silme menüsü - YENİ SİSTEM"""
+    """Sponsor silme menüsü"""
     query = update.callback_query
 
     sponsors = db.get_active_sponsors()
@@ -358,7 +361,7 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # ============================================================================
-# BROADCAST - GELİŞMİŞ SİSTEM
+# BROADCAST
 # ============================================================================
 
 async def admin_broadcast_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -461,7 +464,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"✅ Promo kod döredildi!\n\n"
                     f"🎟 Kod: <code>{code}</code>\n"
                     f"💎 Mukdar: {diamond}\n"
-                    f"📢 Ulanyş sany: {max_uses}",
+                    f"🔢 Ulanyş sany: {max_uses}",
                     parse_mode="HTML"
                 )
             else:
@@ -494,7 +497,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "/addsponsor @kanal_ady Kanal ady 5"
             )
 
-    # Broadcast - GELİŞMİŞ
+    # Broadcast
     elif command == "broadcast":
         try:
             # Mesajın tamamını al (komut hariç)
@@ -514,7 +517,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             for user_id in users:
                 try:
-                    # Mesajı olduğu gibi gönder (satır atlamaları korunur)
+                    # Mesajı olduğu gibi gönder
                     await context.bot.send_message(
                         chat_id=user_id,
                         text=f"📢 <b>Habar:</b>\n\n{message}",
@@ -528,13 +531,13 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await status_msg.edit_text(
                 f"✅ Habar ugradyldy!\n\n"
-                f"✔ Üstünlikli: {success}\n"
+                f"✓ Üstünlikli: {success}\n"
                 f"✗ Başartmady: {failed}"
             )
         except Exception as e:
             await update.message.reply_text(f"❌ Ýalňyşlyk: {e}")
 
-    # Para çekme onaylama (komut ile)
+    # Para çekme onaylama
     elif command == "approve":
         try:
             request_id = int(context.args[0])
