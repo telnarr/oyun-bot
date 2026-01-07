@@ -169,7 +169,7 @@ async def handle_membership_check(update: Update, context: ContextTypes.DEFAULT_
                         text=(
                             f"🎉 <b>Täze Referal!</b>\n\n"
                             f"👤 @{user.username or user.first_name} siziň referalyňyz bilen bota goşuldy!\n"
-                            f"💎 Bonus: <b>+2 diamond</b>\n\n"
+                            f"💎 Bonus: <b>+1 diamond</b>\n\n"
                             f"👥 Jemi referalyňyz: <b>{referrer_data['referral_count'] + 1}</b>"
                         ),
                         parse_mode="HTML"
