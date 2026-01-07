@@ -6,10 +6,27 @@ Callback Handler Modülü - Tüm buton işlemleri
 
 import asyncio
 import logging
+import random
+import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-# Import edilecek: db, Config, check_sponsor_membership, vb.
+# Import from bot_main
+from bot_main import (
+    db, Config, 
+    check_channel_membership, 
+    check_sponsor_membership,
+    get_main_menu_keyboard,
+    get_earn_menu_keyboard,
+    get_games_keyboard,
+    show_main_menu
+)
+
+# Import from bot_admin
+from bot_admin import (
+    show_admin_panel,
+    handle_admin_callbacks
+)
 
 # ============================================================================
 # CALLBACK HANDLERS
@@ -19,76 +36,138 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Tüm buton callback'lerini yönet"""
     query = update.callback_query
     await query.answer()
-    
+
     user_id = query.from_user.id
     data = query.data
-    
+
     # Ana menü
     if data == "back_main":
         await show_main_menu(update, context)
-    
+
     # Kanal takibi kontrolü
     elif data.startswith("check_membership_"):
         await handle_membership_check(update, context)
-    
+
     # Profil
     elif data == "menu_profile":
         await show_profile(update, context)
-    
+
     # Diamond kazan menüsü
     elif data == "menu_earn":
         await show_earn_menu(update, context)
-    
+
     # Oyunlar
     elif data == "earn_games":
         await show_games_menu(update, context)
-    
+
     # Para çekme
     elif data == "menu_withdraw":
         await show_withdraw_menu(update, context)
-    
+
     # Para çekme miktarı seçimi
-    elif data.startswith("withdraw_"):
+    elif data.startswith("withdraw_request_"):
         await handle_withdraw_request(update, context)
-    
+
     # SSS
     elif data == "menu_faq":
         await show_faq(update, context)
-    
+
     # Günlük bonus
     elif data == "earn_daily_bonus":
         await claim_daily_bonus(update, context)
-    
+
     # Günlük görevler (Sponsor sistemi)
     elif data == "earn_tasks":
         await show_daily_tasks(update, context)
-    
+
     # Sponsor takip
     elif data.startswith("sponsor_check_"):
         await handle_sponsor_check(update, context)
-    
+
     # Promo kod
     elif data == "earn_promo":
         await show_promo_input(update, context)
-    
+
     elif data == "earn_promo_cancel":
         context.user_data['waiting_for_promo'] = False
         await show_earn_menu(update, context)
-    
+
     # Oyunlar
     elif data.startswith("game_"):
-        await handle_game_start(update, context, data)
-    
+        await handle_game_start(update, context)
+
     # Admin paneli
     elif data == "admin_panel":
         if user_id in Config.ADMIN_IDS:
             await show_admin_panel(update, context)
         else:
             await query.answer("❌ Siziň admin wezipaňiz ýok!", show_alert=True)
-    
+
     # Admin işlemleri
     elif data.startswith("admin_"):
         await handle_admin_callbacks(update, context)
+
+# ============================================================================
+# KANAL TAKİBİ KONTROLÜ
+# ============================================================================
+
+async def handle_membership_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kanal takibi kontrolü"""
+    query = update.callback_query
+    user = query.from_user
+    
+    referred_by = None
+    if "_" in query.data:
+        ref_id = query.data.split("_")[2]
+        if ref_id != "0":
+            try:
+                referred_by = int(ref_id)
+            except:
+                pass
+
+    is_member = await check_channel_membership(user.id, context)
+
+    if not is_member:
+        await query.answer(
+            "❌ Ähli kanallara agza boluň!",
+            show_alert=True
+        )
+        return
+
+    # Kullanıcıyı kaydet
+    existing_user = db.get_user(user.id)
+
+    if not existing_user:
+        db.create_user(user.id, user.username or "noname", referred_by)
+
+        welcome_msg = (
+            f"🎊 <b>Gutlaýarys {user.first_name}!</b>\n\n"
+            f"💎 Başlangyç bonusy: <b>5 diamond</b>\n"
+        )
+
+        if referred_by:
+            welcome_msg += f"🎁 Sizi çagyran adama hem bonus berildi!\n"
+
+            try:
+                referrer_data = db.get_user(referred_by)
+                if referrer_data:
+                    await context.bot.send_message(
+                        chat_id=referred_by,
+                        text=(
+                            f"🎉 <b>Täze Referal!</b>\n\n"
+                            f"👤 @{user.username or user.first_name} siziň referalyňyz bilen bota goşuldy!\n"
+                            f"💎 Bonus: <b>+2 diamond</b>\n\n"
+                            f"👥 Jemi referalyňyz: <b>{referrer_data['referral_count'] + 1}</b>"
+                        ),
+                        parse_mode="HTML"
+                    )
+            except Exception as e:
+                logging.error(f"Duýduryş ugradylmady: {e}")
+
+        await query.edit_message_text(welcome_msg, parse_mode="HTML")
+        await asyncio.sleep(2)
+
+    await show_main_menu(update, context)
 
 # ============================================================================
 # MENÜ FONKSİYONLARI
@@ -98,16 +177,16 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Profil göster"""
     query = update.callback_query
     user_id = query.from_user.id
-    
+
     user_data = db.get_user(user_id)
-    
+
     if not user_data:
         await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
         return
-    
+
     bot_username = (await context.bot.get_me()).username
     referral_link = f"https://t.me/{bot_username}?start={user_id}"
-    
+
     text = (
         f"👤 <b>Siziň profilyňyz</b>\n\n"
         f"🆔 ID: <code>{user_data['user_id']}</code>\n"
@@ -119,9 +198,9 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<code>{referral_link}</code>\n\n"
         f"💡 Dostlaryňyzy çagyryň we bonus gazanyň!"
     )
-    
+
     keyboard = [[InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")]]
-    
+
     await query.edit_message_text(
         text,
         parse_mode="HTML",
@@ -131,7 +210,7 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_earn_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Diamond kazanma menüsü"""
     query = update.callback_query
-    
+
     text = (
         f"💎 <b>Diamond Gazanyň!</b>\n\n"
         f"🎮 Oýunlary oýnaň\n"
@@ -140,7 +219,7 @@ async def show_earn_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎟 Promo kod ulanyň\n\n"
         f"🚀 Haýsy usuly saýlaýaňyz?"
     )
-    
+
     await query.edit_message_text(
         text,
         parse_mode="HTML",
@@ -150,16 +229,16 @@ async def show_earn_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Oyunlar menüsü"""
     query = update.callback_query
-    
+
     text = (
         f"🎮 <b>Oýunlar</b>\n\n"
-        f"🎯 <b>Almany Tap</b>\n"
-        f"🎰 <b>Lotereýa (Ňeňil)</b>\n"
-        f"🎰 <b>Lotereýa (Kyn)</b>\n"
-        f"🎡 <b>Şansly Aýlaw</b>\n"
+        f"🎯 <b>Almany Tap</b> - 2💎 (40% gazanmak şansy)\n"
+        f"🎰 <b>Lotereýa (Ňeňil)</b> - 3💎 (60% gazanmak şansy)\n"
+        f"🎰 <b>Lotereýa (Kyn)</b> - 5💎 (25% gazanmak şansy)\n"
+        f"🎡 <b>Şansly Aýlaw</b> - 4💎 (Täsirli baýraklar)\n\n"
         f"🎯 Oýun saýlaň!"
     )
-    
+
     await query.edit_message_text(
         text,
         parse_mode="HTML",
@@ -167,25 +246,224 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # ============================================================================
+# OYUN SİSTEMİ
+# ============================================================================
+
+async def handle_game_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Oyunu başlat"""
+    query = update.callback_query
+    user_id = query.from_user.id
+    game_type = query.data.split("_")[1]
+
+    user_data = db.get_user(user_id)
+
+    if not user_data:
+        await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
+        return
+
+    # Oyun tipine göre işlem
+    if game_type == "apple":
+        await play_apple_box(update, context, user_data)
+    elif game_type == "scratch" and "easy" in query.data:
+        await play_scratch_card(update, context, user_data, "easy")
+    elif game_type == "scratch" and "hard" in query.data:
+        await play_scratch_card(update, context, user_data, "hard")
+    elif game_type == "wheel":
+        await play_wheel(update, context, user_data)
+
+async def play_apple_box(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict):
+    """Elma kutusu oyunu"""
+    query = update.callback_query
+    user_id = user_data['user_id']
+
+    game_settings = Config.GAME_SETTINGS["apple_box"]
+    cost = game_settings["cost"]
+
+    if user_data['diamond'] < cost:
+        await query.answer(f"❌ Ýeterlik diamond ýok! {cost}💎 gerek", show_alert=True)
+        return
+
+    # Diamond'ı düş
+    db.update_diamond(user_id, -cost)
+
+    # Oyun simülasyonu
+    await query.edit_message_text(
+        "🎯 <b>Almany Tap!</b>\n\n"
+        "🍎🍎🍎\n"
+        "Birini saýlaň...",
+        parse_mode="HTML"
+    )
+    await asyncio.sleep(1)
+
+    # Kazanma kontrolü
+    win = random.randint(1, 100) <= game_settings["win_chance"]
+
+    if win:
+        reward = game_settings["win_reward"]
+        db.update_diamond(user_id, reward)
+        
+        result_text = (
+            f"🎉 <b>GUTLAÝARYS!</b>\n\n"
+            f"🍎 Siz almany tapdyňyz!\n"
+            f"💎 Gazanyň: <b>+{reward} diamond</b>\n\n"
+            f"💰 Täze balans: <b>{user_data['diamond'] - cost + reward} 💎</b>"
+        )
+    else:
+        result_text = (
+            f"😔 <b>Başartmady!</b>\n\n"
+            f"🍎 Bu gezek almany tapyp bolmady.\n"
+            f"💎 Ulanyldy: <b>-{cost} diamond</b>\n\n"
+            f"💰 Täze balans: <b>{user_data['diamond'] - cost} 💎</b>"
+        )
+
+    keyboard = [
+        [InlineKeyboardButton("🔄 Täzeden oýna", callback_data="game_apple")],
+        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_games")]
+    ]
+
+    await query.edit_message_text(
+        result_text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def play_scratch_card(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict, difficulty: str):
+    """Kazı kazan oyunu"""
+    query = update.callback_query
+    user_id = user_data['user_id']
+
+    game_key = f"scratch_{difficulty}"
+    game_settings = Config.GAME_SETTINGS[game_key]
+    cost = game_settings["cost"]
+
+    if user_data['diamond'] < cost:
+        await query.answer(f"❌ Ýeterlik diamond ýok! {cost}💎 gerek", show_alert=True)
+        return
+
+    # Diamond'ı düş
+    db.update_diamond(user_id, -cost)
+
+    # Oyun simülasyonu
+    await query.edit_message_text(
+        f"🎰 <b>Lotereýa ({'Ňeňil' if difficulty == 'easy' else 'Kyn'})</b>\n\n"
+        "⬜⬜⬜\n"
+        "Açylýar...",
+        parse_mode="HTML"
+    )
+    await asyncio.sleep(1.5)
+
+    # Kazanma kontrolü
+    win = random.randint(1, 100) <= game_settings["win_chance"]
+
+    if win:
+        reward = game_settings["win_reward"]
+        db.update_diamond(user_id, reward)
+        
+        result_text = (
+            f"🎉 <b>GUTLAÝARYS!</b>\n\n"
+            f"🎰 Siz gazandyňyz!\n"
+            f"💎 Gazanyň: <b>+{reward} diamond</b>\n\n"
+            f"💰 Täze balans: <b>{user_data['diamond'] - cost + reward} 💎</b>"
+        )
+    else:
+        result_text = (
+            f"😔 <b>Başartmady!</b>\n\n"
+            f"🎰 Bu gezek gazanyp bolmady.\n"
+            f"💎 Ulanyldy: <b>-{cost} diamond</b>\n\n"
+            f"💰 Täze balans: <b>{user_data['diamond'] - cost} 💎</b>"
+        )
+
+    keyboard = [
+        [InlineKeyboardButton("🔄 Täzeden oýna", callback_data=f"game_scratch_{'easy' if difficulty == 'easy' else 'hard'}")],
+        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_games")]
+    ]
+
+    await query.edit_message_text(
+        result_text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def play_wheel(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict):
+    """Çark oyunu"""
+    query = update.callback_query
+    user_id = user_data['user_id']
+
+    game_settings = Config.GAME_SETTINGS["wheel"]
+    cost = game_settings["cost"]
+
+    if user_data['diamond'] < cost:
+        await query.answer(f"❌ Ýeterlik diamond ýok! {cost}💎 gerek", show_alert=True)
+        return
+
+    # Diamond'ı düş
+    db.update_diamond(user_id, -cost)
+
+    # Oyun simülasyonu
+    await query.edit_message_text(
+        "🎡 <b>Şansly Aýlaw!</b>\n\n"
+        "Çark aýlanýar...",
+        parse_mode="HTML"
+    )
+    await asyncio.sleep(2)
+
+    # Ödül seç
+    rewards = game_settings["rewards"]
+    weights = game_settings["weights"]
+    reward = random.choices(rewards, weights=weights)[0]
+
+    db.update_diamond(user_id, reward)
+
+    if reward > 0:
+        result_text = (
+            f"🎉 <b>GUTLAÝARYS!</b>\n\n"
+            f"🎡 Çark: <b>+{reward} 💎</b>\n"
+            f"💰 Täze balans: <b>{user_data['diamond'] - cost + reward} 💎</b>"
+        )
+    elif reward == 0:
+        result_text = (
+            f"😐 <b>Başartmady!</b>\n\n"
+            f"🎡 Çark: <b>0 💎</b>\n"
+            f"💰 Täze balans: <b>{user_data['diamond'] - cost} 💎</b>"
+        )
+    else:
+        result_text = (
+            f"😔 <b>Ow!</b>\n\n"
+            f"🎡 Çark: <b>{reward} 💎</b>\n"
+            f"💰 Täze balans: <b>{user_data['diamond'] - cost + reward} 💎</b>"
+        )
+
+    keyboard = [
+        [InlineKeyboardButton("🔄 Täzeden oýna", callback_data="game_wheel")],
+        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_games")]
+    ]
+
+    await query.edit_message_text(
+        result_text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+# ============================================================================
 # PARA ÇEKME SİSTEMİ
 # ============================================================================
 
 async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Para çekme menüsü - YENİ SİSTEM"""
+    """Para çekme menüsü"""
     query = update.callback_query
     user_id = query.from_user.id
-    
+
     user_data = db.get_user(user_id)
-    
+
     if not user_data:
         await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
         return
-    
+
     can_withdraw = (
         user_data['diamond'] >= Config.MIN_WITHDRAW_DIAMOND and
         user_data['referral_count'] >= Config.MIN_REFERRAL_COUNT
     )
-    
+
     text = (
         f"💰 <b>Pul Çekmek</b>\n\n"
         f"💎 Siziň balansynyz: <b>{user_data['diamond']} diamond</b>\n"
@@ -195,14 +473,14 @@ async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"   • Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrmaly\n"
         f"   • {Config.DIAMOND_TO_MANAT} diamond = 1 manat\n\n"
     )
-    
+
     keyboard = []
-    
+
     if can_withdraw:
         text += f"✅ Siz pul çekip bilersiňiz!\n\n"
         text += f"💎 <b>Çekmek isleýän mukdaryňyzy saýlaň:</b>"
-        
-        # Para çekme seçenekleri - kullanıcının bakiyesine göre
+
+        # Para çekme seçenekleri
         withdraw_buttons = []
         for amount in Config.WITHDRAW_OPTIONS:
             if user_data['diamond'] >= amount:
@@ -213,7 +491,7 @@ async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         callback_data=f"withdraw_request_{amount}"
                     )
                 )
-        
+
         # Her satırda 2 buton
         for i in range(0, len(withdraw_buttons), 2):
             keyboard.append(withdraw_buttons[i:i+2])
@@ -223,11 +501,11 @@ async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reasons.append(f"❌ Ýeterlik diamond ýok ({Config.MIN_WITHDRAW_DIAMOND} gerek)")
         if user_data['referral_count'] < Config.MIN_REFERRAL_COUNT:
             reasons.append(f"❌ Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrmalysynyz")
-        
+
         text += "\n".join(reasons)
-    
+
     keyboard.append([InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")])
-    
+
     await query.edit_message_text(
         text,
         parse_mode="HTML",
@@ -238,47 +516,47 @@ async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
     """Para çekme talebini işle"""
     query = update.callback_query
     user_id = query.from_user.id
-    
+
     amount = int(query.data.split("_")[2])
-    
+
     user_data = db.get_user(user_id)
-    
+
     if not user_data:
         await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
         return
-    
+
     # Son kontroller
     if user_data['diamond'] < amount:
         await query.answer("❌ Ýeterlik diamond ýok!", show_alert=True)
         return
-    
+
     if user_data['referral_count'] < Config.MIN_REFERRAL_COUNT:
         await query.answer(f"❌ Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrmalysynyz!", show_alert=True)
         return
-    
+
     # Para çekme talebini oluştur
     manat_amount = amount / Config.DIAMOND_TO_MANAT
     request_id = db.create_withdrawal_request(
-        user_id, 
-        user_data['username'], 
-        amount, 
+        user_id,
+        user_data['username'],
+        amount,
         manat_amount
     )
-    
+
     # Kullanıcıya bildirim
     await query.edit_message_text(
         f"✅ <b>Talap döredildi!</b>\n\n"
         f"📋 Talap №: <code>{request_id}</code>\n"
         f"💎 Mukdar: <b>{amount} diamond</b>\n"
         f"💵 Manat: <b>{manat_amount:.2f} TMT</b>\n\n"
-        f"⏳ Admin siziň talapyňyzy gözden geçirer we siz bilen habarlaşar.\n\n"
-        f"⚠️ Talap onaylanandan soň diamond hasabyňyzdan düşüriler.",
+        f"⏳ Admin siziň tapyňyzy gözden geçirer we siz bilen habarlaşar.\n\n"
+        f"⚠️ Talap onaylanansoň diamond hasabyňyzdan düşüriler.",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
             InlineKeyboardButton("🔙 Baş sahypa", callback_data="back_main")
         ]])
     )
-    
+
     # Admin'e bildirim
     for admin_id in Config.ADMIN_IDS:
         try:
@@ -300,21 +578,21 @@ async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
             logging.error(f"Admin bildirimi gönderilemedi: {e}")
 
 # ============================================================================
-# GÜNLÜK GÖREVLER - YENİ SPONSOR SİSTEMİ
+# GÜNLÜK GÖREVLER - SPONSOR SİSTEMİ
 # ============================================================================
 
 async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Günlük görevler menüsü - TEK TEK GÖSTER"""
+    """Günlük görevler menüsü"""
     query = update.callback_query
     user_id = query.from_user.id
-    
+
     # Günlük reset kontrolü
     if db.check_daily_task_reset(user_id):
         db.reset_user_daily_tasks(user_id)
-    
+
     # Bir sonraki sponsoru getir
     sponsor = db.get_user_next_sponsor(user_id)
-    
+
     if not sponsor:
         await query.edit_message_text(
             "📋 <b>Gündelik Zadanýalar</b>\n\n"
@@ -326,14 +604,14 @@ async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]])
         )
         return
-    
+
     text = (
         f"📋 <b>Gündelik Zadanýalar</b>\n\n"
         f"📢 <b>{sponsor['channel_name']}</b>\n"
         f"💎 Baýrak: <b>+{sponsor['diamond_reward']} diamond</b>\n\n"
         f"👇 Kanala/grupa agza boluň we 'Takip Ettim' düwmesine basyň!"
     )
-    
+
     keyboard = [
         [InlineKeyboardButton(
             f"📢 {sponsor['channel_name']} - Açmak",
@@ -345,7 +623,7 @@ async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )],
         [InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")]
     ]
-    
+
     await query.edit_message_text(
         text,
         parse_mode="HTML",
@@ -356,36 +634,36 @@ async def handle_sponsor_check(update: Update, context: ContextTypes.DEFAULT_TYP
     """Sponsor takip kontrolü"""
     query = update.callback_query
     user_id = query.from_user.id
-    
+
     sponsor_id = int(query.data.split("_")[2])
-    
+
     # Sponsor bilgilerini getir
     sponsors = db.get_active_sponsors()
     sponsor = next((s for s in sponsors if s['sponsor_id'] == sponsor_id), None)
-    
+
     if not sponsor:
         await query.answer("❌ Sponsor tapylmady!", show_alert=True)
         return
-    
+
     # Üyelik kontrolü
     is_member = await check_sponsor_membership(user_id, sponsor['channel_id'], context)
-    
+
     if not is_member:
         await query.answer(
             f"❌ Ilki bilen {sponsor['channel_name']} takip ediň!",
             show_alert=True
         )
         return
-    
+
     # Ödülü ver
     if db.complete_sponsor(user_id, sponsor_id):
         db.update_diamond(user_id, sponsor['diamond_reward'])
-        
+
         await query.answer(
             f"✅ +{sponsor['diamond_reward']} 💎 aldyňyz!",
             show_alert=True
         )
-        
+
         # Otomatik bir sonraki sponsoru göster
         await show_daily_tasks(update, context)
     else:
@@ -398,9 +676,9 @@ async def handle_sponsor_check(update: Update, context: ContextTypes.DEFAULT_TYP
 async def show_promo_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Promo kod girişi"""
     query = update.callback_query
-    
+
     context.user_data['waiting_for_promo'] = True
-    
+
     await query.edit_message_text(
         "🎟 <b>Promo Kod</b>\n\n"
         "💎 Promo kodyňyzy ýazyň:\n\n"
@@ -415,12 +693,12 @@ async def handle_promo_code_input(update: Update, context: ContextTypes.DEFAULT_
     """Promo kod mesajını işle"""
     if not context.user_data.get('waiting_for_promo'):
         return
-    
+
     user_id = update.effective_user.id
     promo_code = update.message.text.strip().upper()
-    
+
     result = db.use_promo_code(promo_code, user_id)
-    
+
     if result is None:
         await update.message.reply_text(
             "❌ <b>Ýalňyş kod!</b>\n\n"
@@ -447,7 +725,7 @@ async def handle_promo_code_input(update: Update, context: ContextTypes.DEFAULT_
             f"🎟 Kod: <code>{promo_code}</code>",
             parse_mode="HTML"
         )
-    
+
     context.user_data['waiting_for_promo'] = False
 
 # ============================================================================
@@ -457,7 +735,7 @@ async def handle_promo_code_input(update: Update, context: ContextTypes.DEFAULT_
 async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """SSS göster"""
     query = update.callback_query
-    
+
     text = (
         f"❓ <b>Ýygy-ýygydan soralýan soraglar</b>\n\n"
         f"<b>🎮 Nädip oýnamaly?</b>\n"
@@ -466,7 +744,7 @@ async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• Oýunlar oýnaň\n"
         f"• Gündelik bonus alyň\n"
         f"• Zadanýalary ýerine ýetiriň\n"
-        f"• Referalyňyz bilen adam çagryň\n"
+        f"• Referalyňyz bilen adam çagyryň\n"
         f"• Promo kodlary ulanyň\n\n"
         f"<b>💰 Pul nädip çekmeli?</b>\n"
         f"• Azyndan {Config.MIN_WITHDRAW_DIAMOND} diamond jemlemeli\n"
@@ -478,9 +756,9 @@ async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<b>📞 Goldaw</b>\n"
         f"Soraglaryňyz bar bolsa: @dekanaska"
     )
-    
+
     keyboard = [[InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")]]
-    
+
     await query.edit_message_text(
         text,
         parse_mode="HTML",
@@ -491,26 +769,26 @@ async def claim_daily_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Günlük bonus al"""
     query = update.callback_query
     user_id = query.from_user.id
-    
+
     user_data = db.get_user(user_id)
-    
+
     if not user_data:
         await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
         return
-    
+
     current_time = int(time.time())
     time_since_last = current_time - user_data['last_bonus_time']
-    
+
     if time_since_last < Config.DAILY_BONUS_COOLDOWN:
         remaining = Config.DAILY_BONUS_COOLDOWN - time_since_last
         hours = remaining // 3600
         minutes = (remaining % 3600) // 60
-        
+
         await query.answer(
             f"⏰ Indiki bonusa {hours} sagat {minutes} minut galdy!",
             show_alert=True
         )
-        
+
         await query.edit_message_text(
             f"⏰ <b>Garaşyň!</b>\n\n"
             f"🎁 Gündelik bonusynyzy eýýäm aldyňyz!\n\n"
@@ -522,11 +800,11 @@ async def claim_daily_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]])
         )
         return
-    
+
     # Bonus ver
     db.update_diamond(user_id, Config.DAILY_BONUS_AMOUNT)
     db.set_last_bonus_time(user_id)
-    
+
     await query.edit_message_text(
         f"🎁 <b>Gutlaýarys!</b>\n\n"
         f"💎 Siz <b>{Config.DAILY_BONUS_AMOUNT} diamond</b> aldыňyz!\n\n"
