@@ -629,7 +629,7 @@ def get_games_keyboard():
     """Oyunlar menüsü"""
     keyboard = [
         [InlineKeyboardButton("🎯 Almany Tap", callback_data="game_apple")],
-        [InlineKeyboardButton("🎰 Lotereýa (Ňeňil)", callback_data="game_scratch_easy")],
+        [InlineKeyboardButton("🎰 Lotereýa (Ýeňil)", callback_data="game_scratch_easy")],
         [InlineKeyboardButton("🎰 Lotereýa (Kyn)", callback_data="game_scratch_hard")],
         [InlineKeyboardButton("🎡 Şansly Aýlaw", callback_data="game_wheel")],
         [InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")]
