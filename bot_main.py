@@ -51,18 +51,18 @@ class Config:
 
     # Oyun ayarları
     GAME_SETTINGS = {
-        "apple_box": {"cost": 2, "win_reward": 5, "win_chance": 40},
-        "scratch_easy": {"cost": 3, "win_reward": 8, "win_chance": 60},
-        "scratch_hard": {"cost": 5, "win_reward": 20, "win_chance": 25},
+        "apple_box": {"cost": 1, "win_reward": 3, "win_chance": 40},
+        "scratch_easy": {"cost": 1, "win_reward": 3, "win_chance": 60},
+        "scratch_hard": {"cost": 1, "win_reward": 5, "win_chance": 25},
         "wheel": {
-            "cost": 4,
-            "rewards": [0, 3, 5, 8, 10, 15, -2],
-            "weights": [20, 25, 20, 15, 10, 5, 5]
+            "cost": 2,
+            "rewards": [0, 2, 4, 5, 3, -1, -2],
+            "weights": [25, 10, 7, 5, 10, 20, 20]
         }
     }
 
     # Bonus ayarları
-    DAILY_BONUS_AMOUNT = 3
+    DAILY_BONUS_AMOUNT = 1
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat
 
 # ============================================================================
@@ -196,7 +196,7 @@ class Database:
             if referred_by:
                 cursor.execute("""
                     UPDATE users
-                    SET diamond = diamond + 2, referral_count = referral_count + 1
+                    SET diamond = diamond + 1, referral_count = referral_count + 1
                     WHERE user_id = %s
                 """, (referred_by,))
 
@@ -677,7 +677,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         welcome_msg = (
             f"🎊 <b>Gutlaýarys {user.first_name}!</b>\n\n"
-            f"💎 Başlangyç bonusy: <b>5 diamond</b>\n"
+            f"💎 Başlangyç bonusy: <b>3 diamond</b>\n"
         )
 
         if referred_by:
@@ -691,7 +691,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         text=(
                             f"🎉 <b>Täze Referal!</b>\n\n"
                             f"👤 @{user.username or user.first_name} siziň referalyňyz bilen bota goşuldy!\n"
-                            f"💎 Bonus: <b>+2 diamond</b>\n\n"
+                            f"💎 Bonus: <b>+1 diamond</b>\n\n"
                             f"👥 Jemi referalyňyz: <b>{referrer_data['referral_count'] + 1}</b>"
                         ),
                         parse_mode="HTML"
