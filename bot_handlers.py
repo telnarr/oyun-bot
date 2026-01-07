@@ -245,9 +245,9 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         f"🎮 <b>Oýunlar</b>\n\n"
-        f"🎯 <b>Almany Tap</b> - 2💎 (40% utma şansy)\n"
-        f"🎰 <b>Lotereýa (Ýeňil)</b> - 3💎 (60% utma şansy)\n"
-        f"🎰 <b>Lotereýa (Kyn)</b> - 5💎 (25% utma şansy)\n"
+        f"🎯 <b>Almany Tap</b> - 2💎 (40%)\n"
+        f"🎰 <b>Lotereýa (Ýeňil)</b> - 3💎 (60%)\n"
+        f"🎰 <b>Lotereýa (Kyn)</b> - 5💎 (25%)\n"
         f"🎡 <b>Şansly Aýlaw</b> - 4💎 (Täsirli baýraklar)\n\n"
         f"🎯 Oýun saýlaň!"
     )
@@ -322,14 +322,15 @@ async def handle_game_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎯 <b>Nädip oýnamaly?</b>\n"
             f"Şanşly Aýlaw aýlanar we random utuş alarsyňyz!\n"
             f"Şansly bolsaňyz uly utuşlar alyp bilersiňiz! 💰\n\n"
-            f"💎 <b>Bahasy:</b> {settings['cost']} diamond\n"
+            f"💎 <b>Giriş tölegi:</b> {settings['cost']} diamond\n"
             f"🎁 <b>Mümkin bolan netijeler:</b>\n"
             f"   • 0 💎 (boş)\n"
+            f"   • +2 💎\n"
             f"   • +3 💎\n"
+            f"   • +4 💎\n"
             f"   • +5 💎\n"
-            f"   • +8 💎\n"
-            f"   • +10 💎\n"
-            f"   • +15 💎 (JACKPOT!)\n"
+            f"   • +8 💎 (JACKPOT!)\n"
+            f"   • -1 💎 (jeza!)\n"
             f"   • -2 💎 (jeza)\n\n"
             f"💰 Siziň balansynyz: <b>{user_data['diamond']} 💎</b>"
         )
