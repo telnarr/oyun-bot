@@ -815,11 +815,11 @@ async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
         f"📋 Talap №: <code>{request_id}</code>\n"
         f"💎 Mukdar: <b>{amount} diamond</b>\n"
         f"💵 Manat: <b>{manat_amount:.2f} TMT</b>\n\n"
-        f"⏳ Admin siziň tapyňyzy gözden geçirer we siz bilen habarlaşar.\n\n"
-        f"⚠️ Talap onaylanansoň diamond hasabyňyzdan düşüriler.",
+        f"⏳ Admin siziň talabyňyzy gözden geçirer we siz bilen habarlaşar.\n\n"
+        f"⚠️ Talap kabul edilende diamond hasabyňyzdan düşüriler.",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔙 Baş sahypa", callback_data="back_main")
+            InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")
         ]])
     )
 
