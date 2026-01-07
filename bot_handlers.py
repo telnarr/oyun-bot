@@ -245,10 +245,10 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         f"🎮 <b>Oýunlar</b>\n\n"
-        f"🎯 <b>Almany Tap</b> - 2💎 (40%)\n"
-        f"🎰 <b>Lotereýa (Ýeňil)</b> - 3💎 (60%)\n"
-        f"🎰 <b>Lotereýa (Kyn)</b> - 5💎 (25%)\n"
-        f"🎡 <b>Şansly Aýlaw</b> - 4💎 (Täsirli baýraklar)\n\n"
+        f"🎯 <b>Almany Tap</b> - 1💎 (40%)\n"
+        f"🎰 <b>Lotereýa (Ýeňil)</b> - 1💎 (60%)\n"
+        f"🎰 <b>Lotereýa (Kyn)</b> - 1💎 (25%)\n"
+        f"🎡 <b>Şansly Aýlaw</b> - 2💎 (Täsirli baýraklar)\n\n"
         f"🎯 Oýun saýlaň!"
     )
 
