@@ -1,0 +1,522 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Callback Handler Modülü - Tüm buton işlemleri
+"""
+
+import asyncio
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+
+# Import edilecek: db, Config, check_sponsor_membership, vb.
+
+# ============================================================================
+# CALLBACK HANDLERS
+# ============================================================================
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Tüm buton callback'lerini yönet"""
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+    data = query.data
+
+    # Ana menü
+    if data == "back_main":
+        await show_main_menu(update, context)
+
+    # Kanal takibi kontrolü
+    elif data.startswith("check_membership_"):
+        await handle_membership_check(update, context)
+
+    # Profil
+    elif data == "menu_profile":
+        await show_profile(update, context)
+
+    # Diamond kazan menüsü
+    elif data == "menu_earn":
+        await show_earn_menu(update, context)
+
+    # Oyunlar
+    elif data == "earn_games":
+        await show_games_menu(update, context)
+
+    # Para çekme
+    elif data == "menu_withdraw":
+        await show_withdraw_menu(update, context)
+
+    # Para çekme miktarı seçimi
+    elif data.startswith("withdraw_"):
+        await handle_withdraw_request(update, context)
+
+    # SSS
+    elif data == "menu_faq":
+        await show_faq(update, context)
+
+    # Günlük bonus
+    elif data == "earn_daily_bonus":
+        await claim_daily_bonus(update, context)
+
+    # Günlük görevler (Sponsor sistemi)
+    elif data == "earn_tasks":
+        await show_daily_tasks(update, context)
+
+    # Sponsor takip
+    elif data.startswith("sponsor_check_"):
+        await handle_sponsor_check(update, context)
+
+    # Promo kod
+    elif data == "earn_promo":
+        await show_promo_input(update, context)
+
+    elif data == "earn_promo_cancel":
+        context.user_data['waiting_for_promo'] = False
+        await show_earn_menu(update, context)
+
+    # Oyunlar
+    elif data.startswith("game_"):
+        await handle_game_start(update, context, data)
+
+    # Admin paneli
+    elif data == "admin_panel":
+        if user_id in Config.ADMIN_IDS:
+            await show_admin_panel(update, context)
+        else:
+            await query.answer("❌ Siziň admin wezipaňiz ýok!", show_alert=True)
+
+    # Admin işlemleri
+    elif data.startswith("admin_"):
+        await handle_admin_callbacks(update, context)
+
+# ============================================================================
+# MENÜ FONKSİYONLARI
+# ============================================================================
+
+async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Profil göster"""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    user_data = db.get_user(user_id)
+
+    bot_username = (await context.bot.get_me()).username
+    referral_link = f"https://t.me/{bot_username}?start={user_id}"
+
+    text = (
+        f"👤 <b>Siziň profilyňyz</b>\n\n"
+        f"🆔 ID: <code>{user_data['user_id']}</code>\n"
+        f"👤 Ulanyjy: @{user_data['username']}\n"
+        f"💎 Diamond: <b>{user_data['diamond']}</b>\n"
+        f"👥 Referal: <b>{user_data['referral_count']}</b> adam\n"
+        f"💸 Çekilen: <b>{user_data['total_withdrawn']}</b> diamond\n\n"
+        f"🔗 <b>Referal adres:</b>\n"
+        f"<code>{referral_link}</code>\n\n"
+        f"💡 Dostlaryňyzy çagyryň we bonus gazanyň!"
+    )
+
+    keyboard = [[InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")]]
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def show_earn_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Diamond kazanma menüsü"""
+    query = update.callback_query
+
+    text = (
+        f"💎 <b>Diamond Gazanyň!</b>\n\n"
+        f"🎮 Oýunlary oýnaň\n"
+        f"🎁 Gündelik bonus alyň\n"
+        f"📋 Zadanýalary ýerine ýetiriň\n"
+        f"🎟 Promo kod ulanyň\n\n"
+        f"🚀 Haýsy usuly saýlaýaňyz?"
+    )
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=get_earn_menu_keyboard()
+    )
+
+async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Oyunlar menüsü"""
+    query = update.callback_query
+
+    text = (
+        f"🎮 <b>Oýunlar</b>\n\n"
+        f"🎯 <b>Almany Tap</b>\n"
+        f"🎰 <b>Lotereýa (Ňeňil)</b>\n"
+        f"🎰 <b>Lotereýa (Kyn)</b>\n"
+        f"🎡 <b>Şansly Aýlaw</b>\n"
+        f"🎯 Oýun saýlaň!"
+    )
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=get_games_keyboard()
+    )
+
+# ============================================================================
+# PARA ÇEKME SİSTEMİ
+# ============================================================================
+
+async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Para çekme menüsü - YENİ SİSTEM"""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    user_data = db.get_user(user_id)
+
+    can_withdraw = (
+        user_data['diamond'] >= Config.MIN_WITHDRAW_DIAMOND and
+        user_data['referral_count'] >= Config.MIN_REFERRAL_COUNT
+    )
+
+    text = (
+        f"💰 <b>Pul Çekmek</b>\n\n"
+        f"💎 Siziň balansynyz: <b>{user_data['diamond']} diamond</b>\n"
+        f"💵 Manat görnüşinde: <b>{user_data['diamond'] / Config.DIAMOND_TO_MANAT:.2f} TMT</b>\n\n"
+        f"📋 <b>Şertler:</b>\n"
+        f"   • Minimum: {Config.MIN_WITHDRAW_DIAMOND} 💎\n"
+        f"   • Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrmaly\n"
+        f"   • {Config.DIAMOND_TO_MANAT} diamond = 1 manat\n\n"
+    )
+
+    keyboard = []
+
+    if can_withdraw:
+        text += f"✅ Siz pul çekip bilersiňiz!\n\n"
+        text += f"💎 <b>Çekmek isleýän mukdaryňyzy saýlaň:</b>"
+
+        # Para çekme seçenekleri - kullanıcının bakiyesine göre
+        withdraw_buttons = []
+        for amount in Config.WITHDRAW_OPTIONS:
+            if user_data['diamond'] >= amount:
+                manat = amount / Config.DIAMOND_TO_MANAT
+                withdraw_buttons.append(
+                    InlineKeyboardButton(
+                        f"💎 {amount} ({manat:.1f} TMT)",
+                        callback_data=f"withdraw_request_{amount}"
+                    )
+                )
+
+        # Her satırda 2 buton
+        for i in range(0, len(withdraw_buttons), 2):
+            keyboard.append(withdraw_buttons[i:i+2])
+    else:
+        reasons = []
+        if user_data['diamond'] < Config.MIN_WITHDRAW_DIAMOND:
+            reasons.append(f"❌ Ýeterlik diamond ýok ({Config.MIN_WITHDRAW_DIAMOND} gerek)")
+        if user_data['referral_count'] < Config.MIN_REFERRAL_COUNT:
+            reasons.append(f"❌ Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrmalysynyz")
+
+        text += "\n".join(reasons)
+
+    keyboard.append([InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")])
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Para çekme talebini işle"""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    amount = int(query.data.split("_")[2])
+
+    user_data = db.get_user(user_id)
+
+    # Son kontroller
+    if user_data['diamond'] < amount:
+        await query.answer("❌ Ýeterlik diamond ýok!", show_alert=True)
+        return
+
+    if user_data['referral_count'] < Config.MIN_REFERRAL_COUNT:
+        await query.answer(f"❌ Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrmalysynyz!", show_alert=True)
+        return
+
+    # Para çekme talebini oluştur
+    manat_amount = amount / Config.DIAMOND_TO_MANAT
+    request_id = db.create_withdrawal_request(
+        user_id,
+        user_data['username'],
+        amount,
+        manat_amount
+    )
+
+    # Kullanıcıya bildirim
+    await query.edit_message_text(
+        f"✅ <b>Talap döredildi!</b>\n\n"
+        f"📋 Talap №: <code>{request_id}</code>\n"
+        f"💎 Mukdar: <b>{amount} diamond</b>\n"
+        f"💵 Manat: <b>{manat_amount:.2f} TMT</b>\n\n"
+        f"⏳ Admin siziň talapyňyzy gözden geçirer we siz bilen habarlaşar.\n\n"
+        f"⚠️ Talap onaylanandan soň diamond hasabyňyzdan düşüriler.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔙 Baş sahypa", callback_data="back_main")
+        ]])
+    )
+
+    # Admin'e bildirim
+    for admin_id in Config.ADMIN_IDS:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=(
+                    f"💰 <b>TÄZE PUL ÇEKMEK TALABY!</b>\n\n"
+                    f"📋 Talap №: <code>{request_id}</code>\n"
+                    f"👤 Ulanyjy: @{user_data['username']} (ID: {user_id})\n"
+                    f"💎 Mukdar: <b>{amount} diamond</b>\n"
+                    f"💵 Manat: <b>{manat_amount:.2f} TMT</b>\n\n"
+                    f"Talapy işlemek üçin:\n"
+                    f"/approve {request_id} - Tassyklamak\n"
+                    f"/reject {request_id} - Ret etmek"
+                ),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logging.error(f"Admin bildirimi gönderilemedi: {e}")
+
+# ============================================================================
+# GÜNLÜK GÖREVLER - YENİ SPONSOR SİSTEMİ
+# ============================================================================
+
+async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Günlük görevler menüsü - TEK TEK GÖSTER"""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    # Günlük reset kontrolü
+    if db.check_daily_task_reset(user_id):
+        db.reset_user_daily_tasks(user_id)
+
+    # Bir sonraki sponsoru getir
+    sponsor = db.get_user_next_sponsor(user_id)
+
+    if not sponsor:
+        await query.edit_message_text(
+            "📋 <b>Gündelik Zadanýalar</b>\n\n"
+            "✅ <b>Gutlaýarys!</b> Ähli zadanýalary tamamladyňyz!\n\n"
+            "🎁 Ertir täze zadanýalar peýda bolar.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")
+            ]])
+        )
+        return
+
+    text = (
+        f"📋 <b>Gündelik Zadanýalar</b>\n\n"
+        f"📢 <b>{sponsor['channel_name']}</b>\n"
+        f"💎 Baýrak: <b>+{sponsor['diamond_reward']} diamond</b>\n\n"
+        f"👇 Kanala/grupa agza boluň we 'Takip Ettim' düwmesine basyň!"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton(
+            f"📢 {sponsor['channel_name']} - Açmak",
+            url=f"https://t.me/{sponsor['channel_id'].replace('@', '')}"
+        )],
+        [InlineKeyboardButton(
+            "✅ Takip Ettim",
+            callback_data=f"sponsor_check_{sponsor['sponsor_id']}"
+        )],
+        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")]
+    ]
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def handle_sponsor_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sponsor takip kontrolü"""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    sponsor_id = int(query.data.split("_")[2])
+
+    # Sponsor bilgilerini getir
+    sponsors = db.get_active_sponsors()
+    sponsor = next((s for s in sponsors if s['sponsor_id'] == sponsor_id), None)
+
+    if not sponsor:
+        await query.answer("❌ Sponsor tapylmady!", show_alert=True)
+        return
+
+    # Üyelik kontrolü
+    is_member = await check_sponsor_membership(user_id, sponsor['channel_id'], context)
+
+    if not is_member:
+        await query.answer(
+            f"❌ Ilki bilen {sponsor['channel_name']} takip ediň!",
+            show_alert=True
+        )
+        return
+
+    # Ödülü ver
+    if db.complete_sponsor(user_id, sponsor_id):
+        db.update_diamond(user_id, sponsor['diamond_reward'])
+
+        await query.answer(
+            f"✅ +{sponsor['diamond_reward']} 💎 aldyňyz!",
+            show_alert=True
+        )
+
+        # Otomatik bir sonraki sponsoru göster
+        await show_daily_tasks(update, context)
+    else:
+        await query.answer("❌ Bu zadanýany tamamladyňyz!", show_alert=True)
+
+# ============================================================================
+# PROMO KOD SİSTEMİ
+# ============================================================================
+
+async def show_promo_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Promo kod girişi"""
+    query = update.callback_query
+
+    context.user_data['waiting_for_promo'] = True
+
+    await query.edit_message_text(
+        "🎟 <b>Promo Kod</b>\n\n"
+        "💎 Promo kodyňyzy ýazyň:\n\n"
+        "Mysal: <code>BONUS2026</code>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_promo_cancel")
+        ]])
+    )
+
+async def handle_promo_code_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Promo kod mesajını işle"""
+    if not context.user_data.get('waiting_for_promo'):
+        return
+
+    user_id = update.effective_user.id
+    promo_code = update.message.text.strip().upper()
+
+    result = db.use_promo_code(promo_code, user_id)
+
+    if result is None:
+        await update.message.reply_text(
+            "❌ <b>Ýalňyş kod!</b>\n\n"
+            "Bu promo kod tapylmady.",
+            parse_mode="HTML"
+        )
+    elif result == -1:
+        await update.message.reply_text(
+            "❌ <b>Kod gutardy!</b>\n\n"
+            "Bu promo kodyň ulanyş möhleti gutardy.",
+            parse_mode="HTML"
+        )
+    elif result == -2:
+        await update.message.reply_text(
+            "❌ <b>Eýýäm ulanyldy!</b>\n\n"
+            "Siz bu promo kody öň ulandyňyz.",
+            parse_mode="HTML"
+        )
+    else:
+        db.update_diamond(user_id, result)
+        await update.message.reply_text(
+            f"🎉 <b>GUTLAÝARYS!</b>\n\n"
+            f"💎 Siz <b>{result} diamond</b> aldyňyz!\n"
+            f"🎟 Kod: <code>{promo_code}</code>",
+            parse_mode="HTML"
+        )
+
+    context.user_data['waiting_for_promo'] = False
+
+# ============================================================================
+# DİĞER FONKSİYONLAR
+# ============================================================================
+
+async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """SSS göster"""
+    query = update.callback_query
+
+    text = (
+        f"❓ <b>Ýygy-ýygydan soralýan soraglar</b>\n\n"
+        f"<b>🎮 Nädip oýnamaly?</b>\n"
+        f"Oýunlary saýlap, diamond bilen giriş tölegini etmeli. Her oýnunda gazanmak mümkinçiligi bar!\n\n"
+        f"<b>💎 Diamond nädip gazanmaly?</b>\n"
+        f"• Oýunlar oýnaň\n"
+        f"• Gündelik bonus alyň\n"
+        f"• Zadanýalary ýerine ýetiriň\n"
+        f"• Referalyňyz bilen adam çagryň\n"
+        f"• Promo kodlary ulanyň\n\n"
+        f"<b>💰 Pul nädip çekmeli?</b>\n"
+        f"• Azyndan {Config.MIN_WITHDRAW_DIAMOND} diamond jemlemeli\n"
+        f"• {Config.MIN_REFERRAL_COUNT} adam çagyrmaly\n"
+        f"• 'Pul çekmek' bölüminden talap döretmeli\n"
+        f"• Admin siz bilen habarlaşýar\n\n"
+        f"<b>🔒 Howpsuzlyk</b>\n"
+        f"Siziň maglumatlarыңyz goragly saklanýar. Hiç bir üçünji tarapa berilmeýär.\n\n"
+        f"<b>📞 Goldaw</b>\n"
+        f"Soraglaryňyz bar bolsa: @dekanaska"
+    )
+
+    keyboard = [[InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")]]
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def claim_daily_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Günlük bonus al"""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    user_data = db.get_user(user_id)
+
+    current_time = int(time.time())
+    time_since_last = current_time - user_data['last_bonus_time']
+
+    if time_since_last < Config.DAILY_BONUS_COOLDOWN:
+        remaining = Config.DAILY_BONUS_COOLDOWN - time_since_last
+        hours = remaining // 3600
+        minutes = (remaining % 3600) // 60
+
+        await query.answer(
+            f"⏰ Indiki bonusa {hours} sagat {minutes} minut galdy!",
+            show_alert=True
+        )
+
+        await query.edit_message_text(
+            f"⏰ <b>Garaşyň!</b>\n\n"
+            f"🎁 Gündelik bonusynyzy eýýäm aldyňyz!\n\n"
+            f"⏳ Indiki bonus: <b>{hours} sagat {minutes} minut</b> soň\n"
+            f"💎 Bonus mukdary: <b>{Config.DAILY_BONUS_AMOUNT} diamond</b>",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")
+            ]])
+        )
+        return
+
+    # Bonus ver
+    db.update_diamond(user_id, Config.DAILY_BONUS_AMOUNT)
+    db.set_last_bonus_time(user_id)
+
+    await query.edit_message_text(
+        f"🎁 <b>Gutlaýarys!</b>\n\n"
+        f"💎 Siz <b>{Config.DAILY_BONUS_AMOUNT} diamond</b> aldыňyz!\n\n"
+        f"⏰ Indiki bonus üçin 24 sagatdan soň geliň.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")
+        ]])
+    )
