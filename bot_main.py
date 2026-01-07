@@ -34,21 +34,21 @@ class Config:
     """Bot yapılandırması"""
     BOT_TOKEN = os.getenv("BOT_TOKEN", "8133082070:AAE1rRGxQ9_Qqx-LZW54WFuFuGEo9FZhhWc")
     ADMIN_IDS = [7172270461]
-
+    
     # PostgreSQL - Railway bağlantısı
     DATABASE_URL = os.getenv("DATABASE_URL")
-
+    
     # Zorunlu kanallar
     REQUIRED_CHANNELS = ["@igro_lab"]
-
+    
     # Diamond sistemi
     DIAMOND_TO_MANAT = 5  # 5 diamond = 1 manat
     MIN_WITHDRAW_DIAMOND = 25
     MIN_REFERRAL_COUNT = 2
-
+    
     # Para çekme seçenekleri
     WITHDRAW_OPTIONS = [25, 50, 75, 100]
-
+    
     # Oyun ayarları
     GAME_SETTINGS = {
         "apple_box": {"cost": 2, "win_reward": 5, "win_chance": 40},
@@ -60,7 +60,7 @@ class Config:
             "weights": [20, 25, 20, 15, 10, 5, 5]
         }
     }
-
+    
     # Bonus ayarları
     DAILY_BONUS_AMOUNT = 3
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat
@@ -71,27 +71,27 @@ class Config:
 
 class Database:
     """PostgreSQL veritabanı yöneticisi"""
-
+    
     def __init__(self):
         self.connection_pool = psycopg2.pool.SimpleConnectionPool(
             1, 20,
             Config.DATABASE_URL
         )
         self.init_db()
-
+    
     def get_connection(self):
         """Bağlantı havuzundan bağlantı al"""
         return self.connection_pool.getconn()
-
+    
     def return_connection(self, conn):
         """Bağlantıyı havuza geri ver"""
         self.connection_pool.putconn(conn)
-
+    
     def init_db(self):
         """Veritabanı tablolarını oluştur"""
         conn = self.get_connection()
         cursor = conn.cursor()
-
+        
         # Kullanıcılar tablosu
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -107,7 +107,7 @@ class Database:
                 last_task_reset BIGINT DEFAULT 0
             )
         """)
-
+        
         # Promo kodlar
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
@@ -118,7 +118,7 @@ class Database:
                 created_date BIGINT
             )
         """)
-
+        
         # Kullanıcı promo kod kullanımı
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS used_promo_codes (
@@ -128,7 +128,7 @@ class Database:
                 PRIMARY KEY (user_id, code)
             )
         """)
-
+        
         # Sponsor kanallar/gruplar
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS sponsors (
@@ -140,7 +140,7 @@ class Database:
                 created_date BIGINT
             )
         """)
-
+        
         # Kullanıcı sponsor takip durumu
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_sponsors (
@@ -150,7 +150,7 @@ class Database:
                 PRIMARY KEY (user_id, sponsor_id)
             )
         """)
-
+        
         # Para çekme talepleri
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS withdrawal_requests (
@@ -164,13 +164,13 @@ class Database:
                 processed_date BIGINT
             )
         """)
-
+        
         conn.commit()
         cursor.close()
         self.return_connection(conn)
-
+    
     # ========== KULLANICI İŞLEMLERİ ==========
-
+    
     def get_user(self, user_id: int) -> Optional[Dict]:
         """Kullanıcı bilgilerini getir"""
         conn = self.get_connection()
@@ -180,26 +180,26 @@ class Database:
         cursor.close()
         self.return_connection(conn)
         return dict(user) if user else None
-
+    
     def create_user(self, user_id: int, username: str, referred_by: Optional[int] = None):
         """Yeni kullanıcı oluştur"""
         conn = self.get_connection()
         cursor = conn.cursor()
-
+        
         try:
             cursor.execute("""
                 INSERT INTO users (user_id, username, diamond, referred_by, joined_date, last_task_reset)
                 VALUES (%s, %s, 5, %s, %s, %s)
                 ON CONFLICT (user_id) DO NOTHING
             """, (user_id, username, referred_by, int(time.time()), int(time.time())))
-
+            
             if referred_by:
                 cursor.execute("""
-                    UPDATE users
+                    UPDATE users 
                     SET diamond = diamond + 2, referral_count = referral_count + 1
                     WHERE user_id = %s
                 """, (referred_by,))
-
+            
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -207,7 +207,7 @@ class Database:
         finally:
             cursor.close()
             self.return_connection(conn)
-
+    
     def update_diamond(self, user_id: int, amount: int):
         """Diamond güncelle"""
         conn = self.get_connection()
@@ -218,7 +218,7 @@ class Database:
         conn.commit()
         cursor.close()
         self.return_connection(conn)
-
+    
     def set_last_bonus_time(self, user_id: int):
         """Son bonus alma zamanını kaydet"""
         conn = self.get_connection()
@@ -229,9 +229,9 @@ class Database:
         conn.commit()
         cursor.close()
         self.return_connection(conn)
-
+    
     # ========== PROMO KOD İŞLEMLERİ ==========
-
+    
     def create_promo_code(self, code: str, diamond_reward: int, max_uses: int):
         """Promo kod oluştur"""
         conn = self.get_connection()
@@ -249,49 +249,49 @@ class Database:
         finally:
             cursor.close()
             self.return_connection(conn)
-
+    
     def use_promo_code(self, code: str, user_id: int) -> Optional[int]:
         """Promo kod kullan"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-
+        
         cursor.execute("SELECT * FROM promo_codes WHERE code = %s", (code,))
         promo = cursor.fetchone()
-
+        
         if not promo:
             cursor.close()
             self.return_connection(conn)
             return None
-
+        
         if promo['current_uses'] >= promo['max_uses']:
             cursor.close()
             self.return_connection(conn)
             return -1
-
+        
         cursor.execute("""
             SELECT * FROM used_promo_codes WHERE user_id = %s AND code = %s
         """, (user_id, code))
-
+        
         if cursor.fetchone():
             cursor.close()
             self.return_connection(conn)
             return -2
-
+        
         cursor.execute("""
             UPDATE promo_codes SET current_uses = current_uses + 1 WHERE code = %s
         """, (code,))
-
+        
         cursor.execute("""
-            INSERT INTO used_promo_codes (user_id, code, used_date)
+            INSERT INTO used_promo_codes (user_id, code, used_date) 
             VALUES (%s, %s, %s)
         """, (user_id, code, int(time.time())))
-
+        
         conn.commit()
         reward = promo['diamond_reward']
         cursor.close()
         self.return_connection(conn)
         return reward
-
+    
     def get_all_promo_codes(self) -> List[Dict]:
         """Tüm promo kodları getir"""
         conn = self.get_connection()
@@ -301,7 +301,7 @@ class Database:
         cursor.close()
         self.return_connection(conn)
         return [dict(p) for p in promos]
-
+    
     def delete_promo_code(self, code: str):
         """Promo kod sil"""
         conn = self.get_connection()
@@ -310,9 +310,9 @@ class Database:
         conn.commit()
         cursor.close()
         self.return_connection(conn)
-
+    
     # ========== SPONSOR İŞLEMLERİ ==========
-
+    
     def add_sponsor(self, channel_id: str, channel_name: str, diamond_reward: int):
         """Sponsor kanal/grup ekle"""
         conn = self.get_connection()
@@ -331,20 +331,20 @@ class Database:
         finally:
             cursor.close()
             self.return_connection(conn)
-
+    
     def get_active_sponsors(self) -> List[Dict]:
         """Aktif sponsorları getir"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("""
-            SELECT * FROM sponsors WHERE is_active = TRUE
+            SELECT * FROM sponsors WHERE is_active = TRUE 
             ORDER BY created_date ASC
         """)
         sponsors = cursor.fetchall()
         cursor.close()
         self.return_connection(conn)
         return [dict(s) for s in sponsors]
-
+    
     def get_user_next_sponsor(self, user_id: int) -> Optional[Dict]:
         """Kullanıcının henüz tamamlamadığı bir sonraki sponsoru getir"""
         conn = self.get_connection()
@@ -362,7 +362,7 @@ class Database:
         cursor.close()
         self.return_connection(conn)
         return dict(sponsor) if sponsor else None
-
+    
     def check_sponsor_completed(self, user_id: int, sponsor_id: int) -> bool:
         """Sponsorun tamamlanıp tamamlanmadığını kontrol et"""
         conn = self.get_connection()
@@ -374,7 +374,7 @@ class Database:
         cursor.close()
         self.return_connection(conn)
         return result
-
+    
     def complete_sponsor(self, user_id: int, sponsor_id: int):
         """Sponsoru tamamlandı olarak işaretle"""
         conn = self.get_connection()
@@ -393,7 +393,7 @@ class Database:
         finally:
             cursor.close()
             self.return_connection(conn)
-
+    
     def delete_sponsor(self, sponsor_id: int):
         """Sponsor sil"""
         conn = self.get_connection()
@@ -402,7 +402,7 @@ class Database:
         conn.commit()
         cursor.close()
         self.return_connection(conn)
-
+    
     def reset_user_daily_tasks(self, user_id: int):
         """Kullanıcının günlük görevlerini sıfırla"""
         conn = self.get_connection()
@@ -416,7 +416,7 @@ class Database:
         conn.commit()
         cursor.close()
         self.return_connection(conn)
-
+    
     def check_daily_task_reset(self, user_id: int) -> bool:
         """Günlük görevlerin sıfırlanması gerekip gerekmediğini kontrol et"""
         conn = self.get_connection()
@@ -427,20 +427,20 @@ class Database:
         result = cursor.fetchone()
         cursor.close()
         self.return_connection(conn)
-
+        
         if not result:
             return False
-
+        
         last_reset = result[0]
         current_time = int(time.time())
-
+        
         # 24 saat geçtiyse sıfırla
         if current_time - last_reset >= 86400:
             return True
         return False
-
+    
     # ========== PARA ÇEKME İŞLEMLERİ ==========
-
+    
     def create_withdrawal_request(self, user_id: int, username: str, diamond: int, manat: float):
         """Para çekme talebi oluştur"""
         conn = self.get_connection()
@@ -456,7 +456,7 @@ class Database:
         cursor.close()
         self.return_connection(conn)
         return request_id
-
+    
     def get_withdrawal_request(self, request_id: int) -> Optional[Dict]:
         """Para çekme talebini getir"""
         conn = self.get_connection()
@@ -468,60 +468,60 @@ class Database:
         cursor.close()
         self.return_connection(conn)
         return dict(request) if request else None
-
+    
     def approve_withdrawal(self, request_id: int):
         """Para çekme talebini onayla ve diamond'ı düş"""
         conn = self.get_connection()
         cursor = conn.cursor()
-
+        
         # Talebi getir
         cursor.execute("""
-            SELECT user_id, diamond_amount FROM withdrawal_requests
+            SELECT user_id, diamond_amount FROM withdrawal_requests 
             WHERE request_id = %s
         """, (request_id,))
         result = cursor.fetchone()
-
+        
         if result:
             user_id, diamond_amount = result
-
+            
             # Talebi onayla
             cursor.execute("""
-                UPDATE withdrawal_requests
-                SET status = 'approved', processed_date = %s
+                UPDATE withdrawal_requests 
+                SET status = 'approved', processed_date = %s 
                 WHERE request_id = %s
             """, (int(time.time()), request_id))
-
+            
             # Diamond'ı düş
             cursor.execute("""
-                UPDATE users
+                UPDATE users 
                 SET diamond = diamond - %s, total_withdrawn = total_withdrawn + %s
                 WHERE user_id = %s
             """, (diamond_amount, diamond_amount, user_id))
-
+            
             conn.commit()
-
+        
         cursor.close()
         self.return_connection(conn)
-
+    
     def reject_withdrawal(self, request_id: int):
         """Para çekme talebini reddet"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE withdrawal_requests
-            SET status = 'rejected', processed_date = %s
+            UPDATE withdrawal_requests 
+            SET status = 'rejected', processed_date = %s 
             WHERE request_id = %s
         """, (int(time.time()), request_id))
         conn.commit()
         cursor.close()
         self.return_connection(conn)
-
+    
     def get_pending_withdrawals(self) -> List[Dict]:
         """Bekleyen para çekme taleplerini getir"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("""
-            SELECT * FROM withdrawal_requests
+            SELECT * FROM withdrawal_requests 
             WHERE status = 'pending'
             ORDER BY request_date DESC
         """)
@@ -529,9 +529,9 @@ class Database:
         cursor.close()
         self.return_connection(conn)
         return [dict(r) for r in requests]
-
+    
     # ========== DİĞER İŞLEMLER ==========
-
+    
     def get_all_user_ids(self) -> List[int]:
         """Tüm kullanıcı ID'lerini getir"""
         conn = self.get_connection()
@@ -541,24 +541,24 @@ class Database:
         cursor.close()
         self.return_connection(conn)
         return users
-
+    
     def get_stats(self) -> Dict:
         """Bot istatistiklerini getir"""
         conn = self.get_connection()
         cursor = conn.cursor()
-
+        
         cursor.execute("SELECT COUNT(*) FROM users")
         total_users = cursor.fetchone()[0]
-
+        
         cursor.execute("SELECT SUM(diamond) FROM users")
         total_diamonds = cursor.fetchone()[0] or 0
-
+        
         cursor.execute("SELECT SUM(total_withdrawn) FROM users")
         total_withdrawn = cursor.fetchone()[0] or 0
-
+        
         cursor.close()
         self.return_connection(conn)
-
+        
         return {
             "total_users": total_users,
             "total_diamonds": total_diamonds,
@@ -606,12 +606,12 @@ def get_main_menu_keyboard(is_admin: bool = False):
             InlineKeyboardButton("❓ ÝSS", callback_data="menu_faq")
         ]
     ]
-
+    
     if is_admin:
         keyboard.append([
             InlineKeyboardButton("👑 Admin Paneli", callback_data="admin_panel")
         ])
-
+    
     return InlineKeyboardMarkup(keyboard)
 
 def get_earn_menu_keyboard():
@@ -643,7 +643,7 @@ def get_games_keyboard():
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start komutu"""
     user = update.effective_user
-
+    
     # Davet linki kontrolü
     referred_by = None
     if context.args:
@@ -651,14 +651,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             referred_by = int(context.args[0])
         except:
             pass
-
+    
     # Kanal takibi kontrolü
     is_member = await check_channel_membership(user.id, context)
-
+    
     if not is_member:
         channels_text = "\n".join([f"📢 {ch}" for ch in Config.REQUIRED_CHANNELS])
         keyboard = [[InlineKeyboardButton("✅ Agza boldum", callback_data=f"check_membership_{referred_by if referred_by else 0}")]]
-
+        
         await update.message.reply_text(
             f"🎮 <b>Hoş geldiňiz!</b>\n\n"
             f"🎉 Boty ulanmak üçin aşakdaky kanallara agza boluň:\n\n"
@@ -668,21 +668,21 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
-
+    
     # Kullanıcıyı kaydet
     existing_user = db.get_user(user.id)
-
+    
     if not existing_user:
         db.create_user(user.id, user.username or "noname", referred_by)
-
+        
         welcome_msg = (
             f"🎊 <b>Gutlaýarys {user.first_name}!</b>\n\n"
             f"💎 Başlangyç bonusy: <b>5 diamond</b>\n"
         )
-
+        
         if referred_by:
             welcome_msg += f"🎁 Sizi çagyran adama hem bonus berildi!\n"
-
+            
             try:
                 referrer_data = db.get_user(referred_by)
                 if referrer_data:
@@ -698,16 +698,21 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
             except Exception as e:
                 logging.error(f"Duýduryş ugradylmady: {e}")
-
+        
         await update.message.reply_text(welcome_msg, parse_mode="HTML")
-
+    
     await show_main_menu(update, context)
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ana menüyü göster"""
     user = update.effective_user
     user_data = db.get_user(user.id)
-
+    
+    # Eğer kullanıcı yoksa, oluştur
+    if not user_data:
+        db.create_user(user.id, user.username or "noname")
+        user_data = db.get_user(user.id)
+    
     text = (
         f"🎮 <b>Diamond Labs - Oýun oýnap pul gazanyň!</b>\n\n"
         f"💎 Siziň balansynyz: <b>{user_data['diamond']} diamond</b>\n\n"
@@ -715,10 +720,10 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 5 diamond = 1 manat\n\n"
         f"📊 Näme etjek bolýaňyz?"
     )
-
+    
     is_admin = user.id in Config.ADMIN_IDS
     keyboard = get_main_menu_keyboard(is_admin)
-
+    
     if update.callback_query:
         await update.callback_query.edit_message_text(
             text,
@@ -745,15 +750,15 @@ def main():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
     )
-
+    
     application = Application.builder().token(Config.BOT_TOKEN).build()
-
+    
     # Komutlar
     application.add_handler(CommandHandler("start", start_command))
-
+    
     # Callback handlers eklenecek
     # application.add_handler(CallbackQueryHandler(button_callback))
-
+    
     print("🤖 Bot başlady...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
