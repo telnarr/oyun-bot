@@ -56,8 +56,8 @@ class Config:
         "scratch_hard": {"cost": 1, "win_reward": 5, "win_chance": 25},
         "wheel": {
             "cost": 2,
-            "rewards": [0, 2, 4, 5, 3, -1, -2],
-            "weights": [25, 10, 7, 5, 10, 20, 20]
+            "rewards": [0, 2, 4, 5, 8, 3, -1, -2],
+            "weights": [20, 10, 6, 6, 1, 10, 20, 20]
         }
     }
 
