@@ -8,6 +8,7 @@ import asyncio
 import logging
 import random
 import time
+from collections import Counter
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
@@ -92,9 +93,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_promo'] = False
         await show_earn_menu(update, context)
 
-    # Oyunlar
-    elif data.startswith("game_"):
+    # Oyunlar - Bilgi ekranı
+    elif data.startswith("game_") and not data.startswith("game_play_"):
+        await handle_game_info(update, context)
+
+    # Oyun başlatma
+    elif data.startswith("game_play_"):
         await handle_game_start(update, context)
+
+    # Elma kutusu seçimi
+    elif data.startswith("apple_choice_"):
+        await handle_apple_choice(update, context)
+
+    # Kazı kazan açma
+    elif data.startswith("scratch_reveal_"):
+        await handle_scratch_reveal(update, context)
 
     # Admin paneli
     elif data == "admin_panel":
@@ -162,7 +175,7 @@ async def handle_membership_check(update: Update, context: ContextTypes.DEFAULT_
                         parse_mode="HTML"
                     )
             except Exception as e:
-                logging.error(f"Duýduryş ugradylmady: {e}")
+                logging.error(f"Duýdyryş ugradylmady: {e}")
 
         await query.edit_message_text(welcome_msg, parse_mode="HTML")
         await asyncio.sleep(2)
@@ -215,7 +228,7 @@ async def show_earn_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💎 <b>Diamond Gazanyň!</b>\n\n"
         f"🎮 Oýunlary oýnaň\n"
         f"🎁 Gündelik bonus alyň\n"
-        f"📋 Zadanýalary ýerine ýetiriň\n"
+        f"📋 Zadaňýalary ýerine ýetiriň\n"
         f"🎟 Promo kod ulanyň\n\n"
         f"🚀 Haýsy usuly saýlaýaňyz?"
     )
@@ -233,7 +246,7 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"🎮 <b>Oýunlar</b>\n\n"
         f"🎯 <b>Almany Tap</b> - 2💎 (40% gazanmak şansy)\n"
-        f"🎰 <b>Lotereýa (Ňeňil)</b> - 3💎 (60% gazanmak şansy)\n"
+        f"🎰 <b>Lotereýa (Çeňil)</b> - 3💎 (60% gazanmak şansy)\n"
         f"🎰 <b>Lotereýa (Kyn)</b> - 5💎 (25% gazanmak şansy)\n"
         f"🎡 <b>Şansly Aýlaw</b> - 4💎 (Täsirli baýraklar)\n\n"
         f"🎯 Oýun saýlaň!"
@@ -246,14 +259,14 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # ============================================================================
-# OYUN SİSTEMİ
+# OYUN SİSTEMİ - ANİMASYONLU
 # ============================================================================
 
-async def handle_game_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Oyunu başlat"""
+async def handle_game_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Oyun bilgilerini göster"""
     query = update.callback_query
     user_id = query.from_user.id
-    game_type = query.data.split("_")[1]
+    data = query.data
 
     user_data = db.get_user(user_id)
 
@@ -261,187 +274,439 @@ async def handle_game_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
         return
 
-    # Oyun tipine göre işlem
-    if game_type == "apple":
-        await play_apple_box(update, context, user_data)
-    elif game_type == "scratch" and "easy" in query.data:
-        await play_scratch_card(update, context, user_data, "easy")
-    elif game_type == "scratch" and "hard" in query.data:
-        await play_scratch_card(update, context, user_data, "hard")
-    elif game_type == "wheel":
-        await play_wheel(update, context, user_data)
+    # Oyun tipine göre bilgi
+    if data == "game_apple":
+        settings = Config.GAME_SETTINGS["apple_box"]
+        text = (
+            f"🎁 <b>Almany Tap</b>\n\n"
+            f"🎯 <b>Nädip oýnamaly?</b>\n"
+            f"3 sany guty görkeziler. Bularyň birinde alma bar!\n"
+            f"Dogry gutuny saýlasaňyz utýaňyz! 🎉\n\n"
+            f"💎 <b>Giriş tölegi:</b> {settings['cost']} diamond\n"
+            f"🎁 <b>Gazanç:</b> {settings['win_reward']} diamond\n"
+            f"📊 <b>Şans:</b> %{settings['win_chance']}\n\n"
+            f"💰 Siziň balansynyz: <b>{user_data['diamond']} 💎</b>"
+        )
 
-async def play_apple_box(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict):
-    """Elma kutusu oyunu"""
+    elif data == "game_scratch_easy":
+        settings = Config.GAME_SETTINGS["scratch_easy"]
+        text = (
+            f"🎰 <b>Lotereýa (Çeňil)</b>\n\n"
+            f"🎯 <b>Nädip oýnamaly?</b>\n"
+            f"9 sany kart bar. 4 karty açyp bilýäňiz!\n"
+            f"3 sany şol bir miwäni tapsaňyz utýaňyz! 🎁🍊🍇\n\n"
+            f"💎 <b>Giriş tölegi:</b> {settings['cost']} diamond\n"
+            f"🎁 <b>Gazanç:</b> {settings['win_reward']} diamond\n"
+            f"📊 <b>Şans:</b> %{settings['win_chance']} (Çeňil)\n\n"
+            f"💰 Siziň balansynyz: <b>{user_data['diamond']} 💎</b>"
+        )
+
+    elif data == "game_scratch_hard":
+        settings = Config.GAME_SETTINGS["scratch_hard"]
+        text = (
+            f"🎰 <b>Lotereýa (Kyn)</b>\n\n"
+            f"🎯 <b>Nädip oýnamaly?</b>\n"
+            f"9 sany kart bar. 4 karty açyp bilýäňiz!\n"
+            f"3 sany şol bir miwäni tapsaňyz utýaňyz! 🎁🍊🍇🍋🍓🍉\n"
+            f"⚠️ Has köp dürli miweler bar - has kyn!\n\n"
+            f"💎 <b>Giriş tölegi:</b> {settings['cost']} diamond\n"
+            f"🎁 <b>Gazanç:</b> {settings['win_reward']} diamond\n"
+            f"📊 <b>Şans:</b> %{settings['win_chance']} (Kyn)\n\n"
+            f"💰 Siziň balansynyz: <b>{user_data['diamond']} 💎</b>"
+        )
+
+    elif data == "game_wheel":
+        settings = Config.GAME_SETTINGS["wheel"]
+        text = (
+            f"🎡 <b>Şansly Aýlaw</b>\n\n"
+            f"🎯 <b>Nädip oýnamaly?</b>\n"
+            f"Şanşly Aýlaw aýlanar we random utuş alarsyňyz!\n"
+            f"Şansly bolsaňyz uly utuş alyp bilersiňiz! 💰\n\n"
+            f"💎 <b>Bahasy:</b> {settings['cost']} diamond\n"
+            f"🎁 <b>Mümkin bolan netijeler:</b>\n"
+            f"   • 0 💎 (boş)\n"
+            f"   • +3 💎\n"
+            f"   • +5 💎\n"
+            f"   • +8 💎\n"
+            f"   • +10 💎\n"
+            f"   • +15 💎 (JACKPOT!)\n"
+            f"   • -2 💎 (jeza)\n\n"
+            f"💰 Siziň balansynyz: <b>{user_data['diamond']} 💎</b>"
+        )
+    else:
+        text = "❌ Oýun tapylmady!"
+
+    # Klavye
+    cost = Config.GAME_SETTINGS.get(data.replace("game_", "").replace("scratch_", "scratch_").replace("apple", "apple_box"), {}).get("cost", 0)
+    
+    # Cost'u doğru al
+    if data == "game_apple":
+        cost = Config.GAME_SETTINGS["apple_box"]["cost"]
+    elif data == "game_scratch_easy":
+        cost = Config.GAME_SETTINGS["scratch_easy"]["cost"]
+    elif data == "game_scratch_hard":
+        cost = Config.GAME_SETTINGS["scratch_hard"]["cost"]
+    elif data == "game_wheel":
+        cost = Config.GAME_SETTINGS["wheel"]["cost"]
+
+    if user_data['diamond'] < cost:
+        keyboard = [[InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_games")]]
+        text += f"\n\n❌ <b>Ýeterlik diamond ýok!</b>"
+    else:
+        keyboard = [
+            [InlineKeyboardButton("🎮 BAŞLA!", callback_data=f"game_play_{data}")],
+            [InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_games")]
+        ]
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def handle_game_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Oyunu gerçekten başlat"""
     query = update.callback_query
-    user_id = user_data['user_id']
+    user_id = query.from_user.id
+    
+    # game_play_game_apple -> game_apple
+    game_data = query.data.replace("game_play_", "")
 
-    game_settings = Config.GAME_SETTINGS["apple_box"]
-    cost = game_settings["cost"]
+    user_data = db.get_user(user_id)
+
+    if not user_data:
+        await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
+        return
+
+    # Oyun tipine göre cost
+    if game_data == "game_apple":
+        cost = Config.GAME_SETTINGS["apple_box"]["cost"]
+    elif game_data == "game_scratch_easy":
+        cost = Config.GAME_SETTINGS["scratch_easy"]["cost"]
+    elif game_data == "game_scratch_hard":
+        cost = Config.GAME_SETTINGS["scratch_hard"]["cost"]
+    elif game_data == "game_wheel":
+        cost = Config.GAME_SETTINGS["wheel"]["cost"]
+    else:
+        cost = 0
 
     if user_data['diamond'] < cost:
         await query.answer(f"❌ Ýeterlik diamond ýok! {cost}💎 gerek", show_alert=True)
         return
 
-    # Diamond'ı düş
+    # Diamond düş
     db.update_diamond(user_id, -cost)
 
-    # Oyun simülasyonu
-    await query.edit_message_text(
-        "🎯 <b>Almany Tap!</b>\n\n"
-        "🍎🍎🍎\n"
-        "Birini saýlaň...",
-        parse_mode="HTML"
-    )
+    # Oyunu başlat
+    if game_data == "game_apple":
+        await play_apple_box_game(update, context)
+    elif game_data == "game_scratch_easy":
+        await play_scratch_game(update, context, "easy")
+    elif game_data == "game_scratch_hard":
+        await play_scratch_game(update, context, "hard")
+    elif game_data == "game_wheel":
+        await play_wheel_game(update, context)
+
+# ============================================================================
+# ELMA KUTUSU OYUNU - ANİMASYONLU
+# ============================================================================
+
+async def play_apple_box_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kutudaki Elmayı Bul oyunu"""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    # Animasyon
+    await query.edit_message_text("🎁 Oýun başlaýar...")
     await asyncio.sleep(1)
 
-    # Kazanma kontrolü
-    win = random.randint(1, 100) <= game_settings["win_chance"]
+    await query.edit_message_text("📦 Gutular taýýarlanýar...")
+    await asyncio.sleep(1)
 
-    if win:
-        reward = game_settings["win_reward"]
-        db.update_diamond(user_id, reward)
-
-        result_text = (
-            f"🎉 <b>GUTLAÝARYS!</b>\n\n"
-            f"🍎 Siz almany tapdyňyz!\n"
-            f"💎 Gazanyň: <b>+{reward} diamond</b>\n\n"
-            f"💰 Täze balans: <b>{user_data['diamond'] - cost + reward} 💎</b>"
-        )
-    else:
-        result_text = (
-            f"😔 <b>Başartmady!</b>\n\n"
-            f"🍎 Bu gezek almany tapyp bolmady.\n"
-            f"💎 Ulanyldy: <b>-{cost} diamond</b>\n\n"
-            f"💰 Täze balans: <b>{user_data['diamond'] - cost} 💎</b>"
-        )
-
-    keyboard = [
-        [InlineKeyboardButton("🔄 Täzeden oýna", callback_data="game_apple")],
-        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_games")]
-    ]
-
-    await query.edit_message_text(
-        result_text,
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-async def play_scratch_card(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict, difficulty: str):
-    """Kazı kazan oyunu"""
-    query = update.callback_query
-    user_id = user_data['user_id']
-
-    game_key = f"scratch_{difficulty}"
-    game_settings = Config.GAME_SETTINGS[game_key]
-    cost = game_settings["cost"]
-
-    if user_data['diamond'] < cost:
-        await query.answer(f"❌ Ýeterlik diamond ýok! {cost}💎 gerek", show_alert=True)
-        return
-
-    # Diamond'ı düş
-    db.update_diamond(user_id, -cost)
-
-    # Oyun simülasyonu
-    await query.edit_message_text(
-        f"🎰 <b>Lotereýa ({'Ňeňil' if difficulty == 'easy' else 'Kyn'})</b>\n\n"
-        "⬜⬜⬜\n"
-        "Açylýar...",
-        parse_mode="HTML"
-    )
+    await query.edit_message_text("🔄 Gutular garyşdyrylýar...")
     await asyncio.sleep(1.5)
 
-    # Kazanma kontrolü
-    win = random.randint(1, 100) <= game_settings["win_chance"]
+    # Elma konumu rastgele
+    apple_pos = random.randint(0, 2)
 
-    if win:
-        reward = game_settings["win_reward"]
+    keyboard = [[
+        InlineKeyboardButton("📦 1", callback_data=f"apple_choice_0_{apple_pos}"),
+        InlineKeyboardButton("📦 2", callback_data=f"apple_choice_1_{apple_pos}"),
+        InlineKeyboardButton("📦 3", callback_data=f"apple_choice_2_{apple_pos}")
+    ]]
+
+    await query.edit_message_text(
+        "🎮 <b>Almany Tap</b>\n\n"
+        "🎁 Alma haýsy gutuda? Saýlaň!",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def handle_apple_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kutu seçimi"""
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+    data = query.data.split("_")
+    choice = int(data[2])
+    apple_pos = int(data[3])
+
+    # Animasyon
+    await query.edit_message_text("📦 Gutu açylýar...")
+    await asyncio.sleep(1.5)
+
+    if choice == apple_pos:
+        # Kazandı
+        reward = Config.GAME_SETTINGS["apple_box"]["win_reward"]
         db.update_diamond(user_id, reward)
 
-        result_text = (
+        await query.edit_message_text(
             f"🎉 <b>GUTLAÝARYS!</b>\n\n"
-            f"🎰 Siz gazandyňyz!\n"
-            f"💎 Gazanyň: <b>+{reward} diamond</b>\n\n"
-            f"💰 Täze balans: <b>{user_data['diamond'] - cost + reward} 💎</b>"
+            f"🎁 Almany tapdyňyz!\n"
+            f"💎 Gazanç: <b>{reward} diamond</b>",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_apple"),
+                InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
+            ]])
         )
     else:
-        result_text = (
-            f"😔 <b>Başartmady!</b>\n\n"
-            f"🎰 Bu gezek gazanyp bolmady.\n"
-            f"💎 Ulanyldy: <b>-{cost} diamond</b>\n\n"
-            f"💰 Täze balans: <b>{user_data['diamond'] - cost} 💎</b>"
+        # Kaybetti
+        result_list = ["❌", "❌", "❌"]
+        result_list[apple_pos] = "🎁"
+        result_text = " ".join(result_list)
+
+        await query.edit_message_text(
+            f"😢 <b>Gynandyryjy...</b>\n\n"
+            f"{result_text}\n\n"
+            f"🎁 Alma bu gutuda däldi!\n"
+            f"💪 Täzeden synanyşyň!",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_apple"),
+                InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
+            ]])
         )
 
-    keyboard = [
-        [InlineKeyboardButton("🔄 Täzeden oýna", callback_data=f"game_scratch_{'easy' if difficulty == 'easy' else 'hard'}")],
-        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_games")]
-    ]
+# ============================================================================
+# KAZI KAZAN OYUNU - ANİMASYONLU
+# ============================================================================
+
+async def play_scratch_game(update: Update, context: ContextTypes.DEFAULT_TYPE, difficulty: str):
+    """Kazı Kazan oyunu"""
+    query = update.callback_query
+
+    await query.edit_message_text("🎰 Lotereýa taýýarlanýar...")
+    await asyncio.sleep(1)
+
+    # Zorluk ayarları
+    if difficulty == "easy":
+        fruits = ["🎁", "🍊", "🍇"]
+        distribution = [4, 3, 2]
+    else:  # hard
+        fruits = ["🎁", "🍊", "🍇", "🍋", "🍓", "🍉"]
+        distribution = [3, 1, 1, 1, 1, 2]
+
+    # Kartları oluştur
+    cards = []
+    for fruit, count in zip(fruits, distribution):
+        cards.extend([fruit] * count)
+    random.shuffle(cards)
+
+    # Oyun durumunu sakla
+    context.user_data['scratch_cards'] = cards
+    context.user_data['scratch_revealed'] = [False] * 9
+    context.user_data['scratch_attempts'] = 4
+    context.user_data['scratch_difficulty'] = difficulty
+
+    await show_scratch_board(update, context)
+
+async def show_scratch_board(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kazı Kazan tahtasını göster"""
+    query = update.callback_query
+
+    revealed = context.user_data.get('scratch_revealed', [])
+    cards = context.user_data.get('scratch_cards', [])
+    attempts = context.user_data.get('scratch_attempts', 4)
+
+    keyboard = []
+    for i in range(3):
+        row = []
+        for j in range(3):
+            idx = i * 3 + j
+            if revealed[idx]:
+                row.append(InlineKeyboardButton(cards[idx], callback_data=f"scratch_x_{idx}"))
+            else:
+                row.append(InlineKeyboardButton("❓", callback_data=f"scratch_reveal_{idx}"))
+        keyboard.append(row)
+
+    text = (
+        f"🎰 <b>Lotereýa</b>\n\n"
+        f"🎯 3 sany şol bir miweden tapyň!\n"
+        f"🎫 Galan synanyşyk: <b>{attempts}</b>"
+    )
 
     await query.edit_message_text(
-        result_text,
+        text,
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-async def play_wheel(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: dict):
-    """Çark oyunu"""
+async def handle_scratch_reveal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kazı Kazan kartını aç"""
     query = update.callback_query
-    user_id = user_data['user_id']
+    await query.answer()
 
-    game_settings = Config.GAME_SETTINGS["wheel"]
-    cost = game_settings["cost"]
+    idx = int(query.data.split("_")[2])
 
-    if user_data['diamond'] < cost:
-        await query.answer(f"❌ Ýeterlik diamond ýok! {cost}💎 gerek", show_alert=True)
+    revealed = context.user_data.get('scratch_revealed', [])
+
+    if revealed[idx]:
         return
 
-    # Diamond'ı düş
-    db.update_diamond(user_id, -cost)
+    revealed[idx] = True
+    context.user_data['scratch_revealed'] = revealed
+    context.user_data['scratch_attempts'] -= 1
 
-    # Oyun simülasyonu
-    await query.edit_message_text(
-        "🎡 <b>Şansly Aýlaw!</b>\n\n"
-        "Çark aýlanýar...",
-        parse_mode="HTML"
-    )
+    attempts = context.user_data['scratch_attempts']
+    cards = context.user_data['scratch_cards']
+
+    # Önce tahtayı güncelle
+    await show_scratch_board(update, context)
+
+    # Kazanma kontrolü
+    revealed_cards = [cards[i] for i, r in enumerate(revealed) if r]
+
+    counts = Counter(revealed_cards)
+
+    won = False
+    winning_fruit = None
+    for fruit, count in counts.items():
+        if count >= 3:
+            won = True
+            winning_fruit = fruit
+            break
+
+    # Eğer oyun bittiyse (kazandı veya denemeler bitti)
+    if won or attempts == 0:
+        # Kısa bir bekleme
+        await asyncio.sleep(1)
+
+        user_id = query.from_user.id
+
+        if won:
+            difficulty = context.user_data['scratch_difficulty']
+            reward = Config.GAME_SETTINGS[f"scratch_{difficulty}"]["win_reward"]
+            db.update_diamond(user_id, reward)
+
+            # Tüm kartları göster
+            context.user_data['scratch_revealed'] = [True] * 9
+            await show_scratch_board(update, context)
+
+            await asyncio.sleep(0.5)
+
+            await query.message.reply_text(
+                f"🎉 <b>GUTLAÝARYS!</b>\n\n"
+                f"🎰 3 sany {winning_fruit} tapdyňyz!\n"
+                f"💎 Gazanç: <b>{reward} diamond</b>",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
+                ]])
+            )
+        else:
+            # Tüm kartları göster
+            context.user_data['scratch_revealed'] = [True] * 9
+            await show_scratch_board(update, context)
+
+            await asyncio.sleep(0.5)
+
+            await query.message.reply_text(
+                f"😢 <b>Gynandyryjy...</b>\n\n"
+                f"🎫 Tapyp bilmediňiz!\n"
+                f"💪 Täzeden synanyşyň!",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
+                ]])
+            )
+
+# ============================================================================
+# ÇARK OYUNU - ANİMASYONLU
+# ============================================================================
+
+async def play_wheel_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Çarkı Felek oyunu - Animasyonlu"""
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    rewards = Config.GAME_SETTINGS["wheel"]["rewards"]
+    weights = Config.GAME_SETTINGS["wheel"]["weights"]
+
+    # Animasyon - ödülleri göster
+    await query.edit_message_text("🎡 <b>Şansly Aýlaw taýýarlanýar...</b>", parse_mode="HTML")
+    await asyncio.sleep(1)
+
+    # Çarkta ne var göster
+    rewards_text = "🎡 <b>Aýlawdaky baýraklar:</b>\n\n"
+    for reward in sorted(set(rewards), reverse=True):
+        if reward > 0:
+            rewards_text += f"💎 +{reward} diamond\n"
+        elif reward == 0:
+            rewards_text += f"❌ 0 diamond (boş)\n"
+        else:
+            rewards_text += f"⚠️ {reward} diamond (jeza)\n"
+
+    await query.edit_message_text(rewards_text, parse_mode="HTML")
     await asyncio.sleep(2)
 
-    # Ödül seç
-    rewards = game_settings["rewards"]
-    weights = game_settings["weights"]
-    reward = random.choices(rewards, weights=weights)[0]
-
-    db.update_diamond(user_id, reward)
-
-    if reward > 0:
-        result_text = (
-            f"🎉 <b>GUTLAÝARYS!</b>\n\n"
-            f"🎡 Çark: <b>+{reward} 💎</b>\n"
-            f"💰 Täze balans: <b>{user_data['diamond'] - cost + reward} 💎</b>"
-        )
-    elif reward == 0:
-        result_text = (
-            f"😐 <b>Başartmady!</b>\n\n"
-            f"🎡 Çark: <b>0 💎</b>\n"
-            f"💰 Täze balans: <b>{user_data['diamond'] - cost} 💎</b>"
-        )
-    else:
-        result_text = (
-            f"😔 <b>Ow!</b>\n\n"
-            f"🎡 Çark: <b>{reward} 💎</b>\n"
-            f"💰 Täze balans: <b>{user_data['diamond'] - cost + reward} 💎</b>"
-        )
-
-    keyboard = [
-        [InlineKeyboardButton("🔄 Täzeden oýna", callback_data="game_wheel")],
-        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="earn_games")]
+    # Çark dönüyor
+    spin_frames = [
+        "🎡 aýlanýar...\n\n🔄",
+        "🎡 aýlanýar...\n\n🔄 💎",
+        "🎡 aýlanýar...\n\n🔄 +1 +3",
+        "🎡 aýlanýar...\n\n🔄 -2 +5",
+        "🎡 aýlanýar...\n\n🔄 0 +1",
+        "🎡 aýlanýar...\n\n🔄 💎 +3",
+        "🎡 aýlanýar...\n\n🔄 -2 💎",
+        "🎡 aýlanýar...\n\n🔄 +10 💎",
+        "🎡 aýlanýar...\n\n🔄 +2 0",
     ]
 
+    for frame in spin_frames:
+        await query.edit_message_text(frame, parse_mode="HTML")
+        await asyncio.sleep(0.4)
+
+    await query.edit_message_text("🎡 <b>Aýlaw haýallaýar...</b>", parse_mode="HTML")
+    await asyncio.sleep(1)
+
+    await query.edit_message_text("🎡 <b>Aýlaw durdy...</b>", parse_mode="HTML")
+    await asyncio.sleep(1)
+
+    # Sonuç seç
+    result = random.choices(rewards, weights=weights)[0]
+
+    if result > 0:
+        db.update_diamond(user_id, result)
+        emoji = "🎉"
+        message = f"GUTLAÝARYS! +{result} diamond gazandyňyz!"
+    elif result == 0:
+        emoji = "😐"
+        message = "Bu gezek hiç zat çykmady!"
+    else:  # ceza
+        db.update_diamond(user_id, result)
+        emoji = "😢"
+        message = f"Gynandyryjy! {result} diamond jeza aldyňyz!"
+
     await query.edit_message_text(
-        result_text,
+        f"{emoji} <b>{message}</b>\n\n"
+        f"💎 Netije: <b>{'+' if result > 0 else ''}{result}</b> diamond",
         parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🎡 Täzeden oýnamak", callback_data="game_wheel"),
+            InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
+        ]])
     )
 
 # ============================================================================
@@ -595,9 +860,9 @@ async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not sponsor:
         await query.edit_message_text(
-            "📋 <b>Gündelik Zadanýalar</b>\n\n"
-            "✅ <b>Gutlaýarys!</b> Ähli zadanýalary tamamladyňyz!\n\n"
-            "🎁 Ertir täze zadanýalar peýda bolar.",
+            "📋 <b>Gündelik Zadaňýalar</b>\n\n"
+            "✅ <b>Gutlaýarys!</b> Ähli zadaňýalary tamamladyňyz!\n\n"
+            "🎁 Ertir täze zadaňýalar peýda bolar.",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
                 InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")
@@ -606,7 +871,7 @@ async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     text = (
-        f"📋 <b>Gündelik Zadanýalar</b>\n\n"
+        f"📋 <b>Gündelik Zadaňýalar</b>\n\n"
         f"📢 <b>{sponsor['channel_name']}</b>\n"
         f"💎 Baýrak: <b>+{sponsor['diamond_reward']} diamond</b>\n\n"
         f"👇 Kanala/grupa agza boluň we 'Takip Ettim' düwmesine basyň!"
@@ -667,7 +932,7 @@ async def handle_sponsor_check(update: Update, context: ContextTypes.DEFAULT_TYP
         # Otomatik bir sonraki sponsoru göster
         await show_daily_tasks(update, context)
     else:
-        await query.answer("❌ Bu zadanýany tamamladyňyz!", show_alert=True)
+        await query.answer("❌ Bu zadaňýany tamamladyňyz!", show_alert=True)
 
 # ============================================================================
 # PROMO KOD SİSTEMİ
@@ -743,7 +1008,7 @@ async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<b>💎 Diamond nädip gazanmaly?</b>\n"
         f"• Oýunlar oýnaň\n"
         f"• Gündelik bonus alyň\n"
-        f"• Zadanýalary ýerine ýetiriň\n"
+        f"• Zadaňýalary ýerine ýetiriň\n"
         f"• Referalyňyz bilen adam çagyryň\n"
         f"• Promo kodlary ulanyň\n\n"
         f"<b>💰 Pul nädip çekmeli?</b>\n"
@@ -752,7 +1017,7 @@ async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 'Pul çekmek' bölüminden talap döretmeli\n"
         f"• Admin siz bilen habarlaşýar\n\n"
         f"<b>🔒 Howpsuzlyk</b>\n"
-        f"Siziň maglumatlarыңyz goragly saklanýar. Hiç bir üçünji tarapa berilmeýär.\n\n"
+        f"Siziň maglumatlarňyz goragly saklanýar. Hiç bir üçünji tarapa berilmeýär.\n\n"
         f"<b>📞 Goldaw</b>\n"
         f"Soraglaryňyz bar bolsa: @dekanaska"
     )
@@ -807,7 +1072,7 @@ async def claim_daily_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.edit_message_text(
         f"🎁 <b>Gutlaýarys!</b>\n\n"
-        f"💎 Siz <b>{Config.DAILY_BONUS_AMOUNT} diamond</b> aldыňyz!\n\n"
+        f"💎 Siz <b>{Config.DAILY_BONUS_AMOUNT} diamond</b> aldyňyz!\n\n"
         f"⏰ Indiki bonus üçin 24 sagatdan soň geliň.",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
