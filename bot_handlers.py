@@ -668,10 +668,10 @@ async def play_wheel_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎡 aýlanýar...\n\n🔄 💎",
         "🎡 aýlanýar...\n\n🔄 +1 +3",
         "🎡 aýlanýar...\n\n🔄 -2 +5",
-        "🎡 aýlanýar...\n\n🔄 0 +1",
+        "🎡 aýlanýar...\n\n🔄 0 +4",
         "🎡 aýlanýar...\n\n🔄 💎 +3",
         "🎡 aýlanýar...\n\n🔄 -2 💎",
-        "🎡 aýlanýar...\n\n🔄 +10 💎",
+        "🎡 aýlanýar...\n\n🔄 +8 💎",
         "🎡 aýlanýar...\n\n🔄 +2 0",
     ]
 
