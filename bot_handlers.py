@@ -228,7 +228,7 @@ async def show_earn_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💎 <b>Diamond Gazanyň!</b>\n\n"
         f"🎮 Oýunlary oýnaň\n"
         f"🎁 Gündelik bonus alyň\n"
-        f"📋 Zadaňýalary ýerine ýetiriň\n"
+        f"📋 Zadanýalary ýerine ýetiriň\n"
         f"🎟 Promo kod ulanyň\n\n"
         f"🚀 Haýsy usuly saýlaýaňyz?"
     )
@@ -860,9 +860,9 @@ async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not sponsor:
         await query.edit_message_text(
-            "📋 <b>Gündelik Zadaňýalar</b>\n\n"
-            "✅ <b>Gutlaýarys!</b> Ähli zadaňýalary tamamladyňyz!\n\n"
-            "🎁 Ertir täze zadaňýalar peýda bolar.",
+            "📋 <b>Gündelik Zadanýalar</b>\n\n"
+            "✅ <b>Gutlaýarys!</b> Ähli zadanýalary tamamladyňyz!\n\n"
+            "🎁 Täze zadanýalar gelýänçä garaşyň.",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
                 InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")
@@ -871,10 +871,10 @@ async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     text = (
-        f"📋 <b>Gündelik Zadaňýalar</b>\n\n"
+        f"📋 <b>Gündelik Zadanýalar</b>\n\n"
         f"📢 <b>{sponsor['channel_name']}</b>\n"
         f"💎 Baýrak: <b>+{sponsor['diamond_reward']} diamond</b>\n\n"
-        f"👇 Kanala/grupa agza boluň we 'Takip Ettim' düwmesine basyň!"
+        f"👇 Kanala agza boluň we 'Agza Boldum' düwmesine basyň!"
     )
 
     keyboard = [
@@ -883,7 +883,7 @@ async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             url=f"https://t.me/{sponsor['channel_id'].replace('@', '')}"
         )],
         [InlineKeyboardButton(
-            "✅ Takip Ettim",
+            "✅ Agza Boldum",
             callback_data=f"sponsor_check_{sponsor['sponsor_id']}"
         )],
         [InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")]
@@ -932,7 +932,7 @@ async def handle_sponsor_check(update: Update, context: ContextTypes.DEFAULT_TYP
         # Otomatik bir sonraki sponsoru göster
         await show_daily_tasks(update, context)
     else:
-        await query.answer("❌ Bu zadaňýany tamamladyňyz!", show_alert=True)
+        await query.answer("❌ Bu zadanýany tamamladyňyz!", show_alert=True)
 
 # ============================================================================
 # PROMO KOD SİSTEMİ
@@ -1008,7 +1008,7 @@ async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<b>💎 Diamond nädip gazanmaly?</b>\n"
         f"• Oýunlar oýnaň\n"
         f"• Gündelik bonus alyň\n"
-        f"• Zadaňýalary ýerine ýetiriň\n"
+        f"• Zadanýalary ýerine ýetiriň\n"
         f"• Referalyňyz bilen adam çagyryň\n"
         f"• Promo kodlary ulanyň\n\n"
         f"<b>💰 Pul nädip çekmeli?</b>\n"
