@@ -51,9 +51,9 @@ class Config:
 
     # Oyun ayarları
     GAME_SETTINGS = {
-        "apple_box": {"cost": 1, "win_reward": 2, "win_chance": 40},
-        "scratch_easy": {"cost": 1, "win_reward": 3, "win_chance": 60},
-        "scratch_hard": {"cost": 1, "win_reward": 4, "win_chance": 25},
+        "apple_box": {"cost": 2, "win_reward": 3, "win_chance": 40},
+        "scratch_easy": {"cost": 2, "win_reward": 3, "win_chance": 60},
+        "scratch_hard": {"cost": 2, "win_reward": 4, "win_chance": 25},
         "wheel": {
             "cost": 2,
             "rewards": [0, 2, 4, 5, 8, 3, -1, -2],
