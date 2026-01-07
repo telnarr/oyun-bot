@@ -245,9 +245,9 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         f"🎮 <b>Oýunlar</b>\n\n"
-        f"🎯 <b>Almany Tap</b> - 2💎 (40% gazanmak şansy)\n"
-        f"🎰 <b>Lotereýa (Çeňil)</b> - 3💎 (60% gazanmak şansy)\n"
-        f"🎰 <b>Lotereýa (Kyn)</b> - 5💎 (25% gazanmak şansy)\n"
+        f"🎯 <b>Almany Tap</b> - 2💎 (40% utma şansy)\n"
+        f"🎰 <b>Lotereýa (Ýeňil)</b> - 3💎 (60% utma şansy)\n"
+        f"🎰 <b>Lotereýa (Kyn)</b> - 5💎 (25% utma şansy)\n"
         f"🎡 <b>Şansly Aýlaw</b> - 4💎 (Täsirli baýraklar)\n\n"
         f"🎯 Oýun saýlaň!"
     )
@@ -291,13 +291,13 @@ async def handle_game_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "game_scratch_easy":
         settings = Config.GAME_SETTINGS["scratch_easy"]
         text = (
-            f"🎰 <b>Lotereýa (Çeňil)</b>\n\n"
+            f"🎰 <b>Lotereýa (Ýeňil)</b>\n\n"
             f"🎯 <b>Nädip oýnamaly?</b>\n"
             f"9 sany kart bar. 4 karty açyp bilýäňiz!\n"
-            f"3 sany şol bir miwäni tapsaňyz utýaňyz! 🎁🍊🍇\n\n"
+            f"3 sany şol bir stikeri tapsaňyz utýaňyz! 🎁🍊🍇\n\n"
             f"💎 <b>Giriş tölegi:</b> {settings['cost']} diamond\n"
             f"🎁 <b>Gazanç:</b> {settings['win_reward']} diamond\n"
-            f"📊 <b>Şans:</b> %{settings['win_chance']} (Çeňil)\n\n"
+            f"📊 <b>Şans:</b> %{settings['win_chance']} (Ýeňil)\n\n"
             f"💰 Siziň balansynyz: <b>{user_data['diamond']} 💎</b>"
         )
 
@@ -307,7 +307,7 @@ async def handle_game_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎰 <b>Lotereýa (Kyn)</b>\n\n"
             f"🎯 <b>Nädip oýnamaly?</b>\n"
             f"9 sany kart bar. 4 karty açyp bilýäňiz!\n"
-            f"3 sany şol bir miwäni tapsaňyz utýaňyz! 🎁🍊🍇🍋🍓🍉\n"
+            f"3 sany şol bir stikeri tapsaňyz utýaňyz! 🎁🍊🍇🍋🍓🍉\n"
             f"⚠️ Has köp dürli miweler bar - has kyn!\n\n"
             f"💎 <b>Giriş tölegi:</b> {settings['cost']} diamond\n"
             f"🎁 <b>Gazanç:</b> {settings['win_reward']} diamond\n"
@@ -321,7 +321,7 @@ async def handle_game_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎡 <b>Şansly Aýlaw</b>\n\n"
             f"🎯 <b>Nädip oýnamaly?</b>\n"
             f"Şanşly Aýlaw aýlanar we random utuş alarsyňyz!\n"
-            f"Şansly bolsaňyz uly utuş alyp bilersiňiz! 💰\n\n"
+            f"Şansly bolsaňyz uly utuşlar alyp bilersiňiz! 💰\n\n"
             f"💎 <b>Bahasy:</b> {settings['cost']} diamond\n"
             f"🎁 <b>Mümkin bolan netijeler:</b>\n"
             f"   • 0 💎 (boş)\n"
