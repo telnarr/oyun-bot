@@ -63,7 +63,7 @@ class Config:
     # Diamond sistemi
     DIAMOND_TO_MANAT = int(os.getenv("DIAMOND_TO_MANAT", "3"))
     MIN_WITHDRAW_DIAMOND = int(os.getenv("MIN_WITHDRAW_DIAMOND", "15"))
-    MIN_REFERRAL_COUNT = int(os.getenv("MIN_REFERRAL_COUNT", "2"))
+    MIN_REFERRAL_COUNT = int(os.getenv("MIN_REFERRAL_COUNT", "0"))
     
     # Oyun ayarları (varsayılan)
     GAME_SETTINGS = {
