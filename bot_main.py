@@ -62,7 +62,7 @@ class Config:
     }
 
     # Bonus ayarları
-    DAILY_BONUS_AMOUNT = 0.5
+    DAILY_BONUS_AMOUNT = 1
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat
 
 # ============================================================================
@@ -196,7 +196,7 @@ class Database:
             if referred_by:
                 cursor.execute("""
                     UPDATE users
-                    SET diamond = diamond + 0.5, referral_count = referral_count + 1
+                    SET diamond = diamond + 1, referral_count = referral_count + 1
                     WHERE user_id = %s
                 """, (referred_by,))
 
@@ -693,7 +693,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         text=(
                             f"🎉 <b>Täze Referal!</b>\n\n"
                             f"👤 @{user.username or user.first_name} siziň referalyňyz bilen bota goşuldy!\n"
-                            f"💎 Bonus: <b>+0.5 diamond</b>\n\n"
+                            f"💎 Bonus: <b>+1 diamond</b>\n\n"
                             f"👥 Jemi referalyňyz: <b>{referrer_data['referral_count'] + 1}</b>"
                         ),
                         parse_mode="HTML"
