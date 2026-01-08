@@ -43,7 +43,7 @@ class Config:
 
     # Diamond sistemi
     DIAMOND_TO_MANAT = 5  # 5 diamond = 1 manat
-    MIN_WITHDRAW_DIAMOND = 25
+    MIN_WITHDRAW_DIAMOND = 50
     MIN_REFERRAL_COUNT = 5
 
     # Para çekme seçenekleri
