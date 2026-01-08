@@ -23,6 +23,7 @@ async def show_admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("👥 Ulanyjylar", callback_data="admin_users")],
         [InlineKeyboardButton("💰 Pul çekme talaplary", callback_data="admin_withdrawals")],
+        [InlineKeyboardButton("🏆 Top Ulanyjylar", callback_data="admin_top_users")],
         [InlineKeyboardButton("🎟 Promo kod döret", callback_data="admin_promo_create")],
         [InlineKeyboardButton("🗑 Promo kod poz", callback_data="admin_promo_delete")],
         [InlineKeyboardButton("📢 Sponsor goş", callback_data="admin_sponsor_add")],
@@ -61,6 +62,93 @@ async def admin_users_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
             InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_panel")
+        ]])
+    )
+
+# ============================================================================
+# TOP KULLANICILAR
+# ============================================================================
+
+async def admin_top_users_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Top kullanıcılar menüsü"""
+    query = update.callback_query
+
+    keyboard = [
+        [InlineKeyboardButton("💎 Iň köp Diamond", callback_data="top_diamond")],
+        [InlineKeyboardButton("👥 Iň köp Referal", callback_data="top_referral")],
+        [InlineKeyboardButton("💸 Iň köp Çeken", callback_data="top_withdrawn")],
+        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_panel")]
+    ]
+
+    await query.edit_message_text(
+        "🏆 <b>Top Ulanyjylar</b>\n\nHaýsy kategoriýany görmek isleýärsiňiz?",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def show_top_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Top kullanıcıları göster"""
+    query = update.callback_query
+    category = query.data.split("_")[1]
+
+    # Kategori başlıkları ve sıralama
+    categories = {
+        "diamond": {
+            "title": "💎 Iň Köp Diamond",
+            "sort_by": "diamond",
+            "emoji": "💎"
+        },
+        "referral": {
+            "title": "👥 Iň Köp Referal",
+            "sort_by": "referral_count",
+            "emoji": "👥"
+        },
+        "withdrawn": {
+            "title": "💸 Iň Köp Çeken",
+            "sort_by": "total_withdrawn",
+            "emoji": "💸"
+        }
+    }
+
+    cat_info = categories.get(category)
+    if not cat_info:
+        return
+
+    # Top 10 kullanıcıyı al
+    top_users = db.get_top_users(cat_info["sort_by"], limit=10)
+
+    if not top_users:
+        await query.edit_message_text(
+            f"{cat_info['title']}\n\n❌ Häzir hiç hili maglumat ýok.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_top_users")
+            ]])
+        )
+        return
+
+    text = f"🏆 <b>{cat_info['title']}</b>\n\n"
+
+    medals = ["🥇", "🥈", "🥉"]
+    
+    for idx, user in enumerate(top_users, 1):
+        medal = medals[idx-1] if idx <= 3 else f"{idx}."
+        username = f"@{user['username']}" if user['username'] else "Anonim"
+        
+        if category == "diamond":
+            value = f"{user['diamond']} 💎"
+        elif category == "referral":
+            value = f"{user['referral_count']} 👥"
+        else:  # withdrawn
+            value = f"{user['total_withdrawn']} 💎"
+        
+        text += f"{medal} {username} - {value}\n"
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_top_users")
         ]])
     )
 
@@ -145,6 +233,22 @@ async def admin_approve_withdrawal(update: Update, context: ContextTypes.DEFAULT
     except Exception as e:
         logging.error(f"Kullanıcıya bildirim gönderilemedi: {e}")
 
+    # Kanala bildirimi gönder
+    try:
+        await context.bot.send_message(
+            chat_id="@diamond_labs",
+            text=(
+                f"✅ <b>TALAP TASSYKLANDY</b>\n\n"
+                f"📋 Talap №: {request_id}\n"
+                f"👤 Ulanyjy: @{request['username']}\n"
+                f"💎 Mukdar: {request['diamond_amount']} diamond\n"
+                f"💵 Manat: {request['manat_amount']:.2f} TMT"
+            ),
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logging.error(f"Kanala bildirim gönderilemedi: {e}")
+
     await query.answer("✅ Talap tassyklandy!", show_alert=True)
     await admin_withdrawals_menu(update, context)
 
@@ -222,7 +326,7 @@ async def admin_promo_delete_menu(update: Update, context: ContextTypes.DEFAULT_
         )
         return
 
-    text = "🎟 <b>Promo Kodlar - Pozmak üçin saýlaň:</b>\n\n"
+    text = "🎟 <b>Promo Kodlar - Pozmak üçin saýlañ:</b>\n\n"
 
     keyboard = []
     for promo in promo_codes:
@@ -299,7 +403,7 @@ async def admin_sponsor_delete_menu(update: Update, context: ContextTypes.DEFAUL
         )
         return
 
-    text = "📢 <b>Sponsorlar - Pozmak üçin saýlaň:</b>\n\n"
+    text = "📢 <b>Sponsorlar - Pozmak üçin saýlañ:</b>\n\n"
 
     keyboard = []
     for sponsor in sponsors:
@@ -373,7 +477,7 @@ async def admin_broadcast_menu(update: Update, context: ContextTypes.DEFAULT_TYP
         "Ähli ulanyjylara habar ugratmak üçin:\n"
         "/broadcast Siziň habaryňyz\n\n"
         "⚠️ Bu ähli ulanyjylara iberiler!\n\n"
-        "💡 <b>Giňişleýin format:</b>\n"
+        "💡 <b>Giriňleýin format:</b>\n"
         "Mesaj içinde satır atlamaları ve boşluklar korunur.\n"
         "HTML formatı desteklenir:\n"
         "<b>bold</b>, <i>italic</i>, <code>code</code>"
@@ -464,7 +568,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"✅ Promo kod döredildi!\n\n"
                     f"🎟 Kod: <code>{code}</code>\n"
                     f"💎 Mukdar: {diamond}\n"
-                    f"🔢 Ulanyş sany: {max_uses}",
+                    f"📢 Ulanyş sany: {max_uses}",
                     parse_mode="HTML"
                 )
             else:
@@ -513,7 +617,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             success = 0
             failed = 0
 
-            status_msg = await update.message.reply_text("📣 Habar iberilýär...")
+            status_msg = await update.message.reply_text("📣 Habar berilýär...")
 
             for user_id in users:
                 try:
@@ -531,7 +635,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await status_msg.edit_text(
                 f"✅ Habar ugradyldy!\n\n"
-                f"✓ Üstünlikli: {success}\n"
+                f"✔ Üstünlikli: {success}\n"
                 f"✗ Başartmady: {failed}"
             )
         except Exception as e:
@@ -539,47 +643,6 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Para çekme onaylama
     elif command == "approve":
-        try:
-            request_id = int(context.args[0])
-            request = db.get_withdrawal_request(request_id)
-
-            if not request:
-                await update.message.reply_text("❌ Talap tapylmady!")
-                return
-
-            if request['status'] != 'pending':
-                await update.message.reply_text("❌ Bu talap eýýäm işlenildi!")
-                return
-
-            db.approve_withdrawal(request_id)
-
-            # Kullanıcıya bildirim
-            try:
-                await context.bot.send_message(
-                    chat_id=request['user_id'],
-                    text=(
-                        f"✅ <b>TALAP TASSYKLANDY!</b>\n\n"
-                        f"📋 Talap №: {request_id}\n"
-                        f"💎 Mukdar: {request['diamond_amount']} diamond\n"
-                        f"💵 Manat: {request['manat_amount']:.2f} TMT\n\n"
-                        f"💰 Diamond hasabyňyzdan düşürildi.\n"
-                        f"📞 Admin siz bilen ýakynda habarlaşar."
-                    ),
-                    parse_mode="HTML"
-                )
-            except:
-                pass
-
-            await update.message.reply_text(
-                f"✅ Talap №{request_id} tassyklandy!\n"
-                f"Ulanyjy: @{request['username']}\n"
-                f"Mukdar: {request['diamond_amount']} 💎 ({request['manat_amount']:.2f} TMT)"
-            )
-        except:
-            await update.message.reply_text("❌ Nädogry format! /approve 123")
-
-    # Para çekme reddetme
-    elif command == "reject":
         try:
             request_id = int(context.args[0])
             request = db.get_withdrawal_request(request_id)
@@ -632,6 +695,10 @@ async def handle_admin_callbacks(update: Update, context: ContextTypes.DEFAULT_T
         await admin_users_menu(update, context)
     elif data == "admin_withdrawals":
         await admin_withdrawals_menu(update, context)
+    elif data == "admin_top_users":
+        await admin_top_users_menu(update, context)
+    elif data.startswith("top_"):
+        await show_top_users(update, context)
     elif data == "admin_promo_create":
         await admin_promo_create_menu(update, context)
     elif data == "admin_promo_delete":
@@ -651,4 +718,61 @@ async def handle_admin_callbacks(update: Update, context: ContextTypes.DEFAULT_T
     elif data.startswith("admin_delpromo_"):
         await admin_delete_promo(update, context)
     elif data.startswith("admin_delsponsor_"):
-        await admin_delete_sponsor(update, context)
+        await admin_delete_sponsor(update, context)_text("❌ Talap tapylmady!")
+                return
+
+            if request['status'] != 'pending':
+                await update.message.reply_text("❌ Bu talap eýýäm işlenildi!")
+                return
+
+            db.approve_withdrawal(request_id)
+
+            # Kullanıcıya bildirim
+            try:
+                await context.bot.send_message(
+                    chat_id=request['user_id'],
+                    text=(
+                        f"✅ <b>TALAP TASSYKLANDY!</b>\n\n"
+                        f"📋 Talap №: {request_id}\n"
+                        f"💎 Mukdar: {request['diamond_amount']} diamond\n"
+                        f"💵 Manat: {request['manat_amount']:.2f} TMT\n\n"
+                        f"💰 Diamond hasabyňyzdan düşürildi.\n"
+                        f"📞 Admin siz bilen ýakynda habarlaşar."
+                    ),
+                    parse_mode="HTML"
+                )
+            except:
+                pass
+
+            # Kanala bildirimi gönder
+            try:
+                await context.bot.send_message(
+                    chat_id="@diamond_labs",
+                    text=(
+                        f"✅ <b>TALAP TASSYKLANDY</b>\n\n"
+                        f"📋 Talap №: {request_id}\n"
+                        f"👤 Ulanyjy: @{request['username']}\n"
+                        f"💎 Mukdar: {request['diamond_amount']} diamond\n"
+                        f"💵 Manat: {request['manat_amount']:.2f} TMT"
+                    ),
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logging.error(f"Kanala bildirim gönderilemedi: {e}")
+
+            await update.message.reply_text(
+                f"✅ Talap №{request_id} tassyklandy!\n"
+                f"Ulanyjy: @{request['username']}\n"
+                f"Mukdar: {request['diamond_amount']} 💎 ({request['manat_amount']:.2f} TMT)"
+            )
+        except:
+            await update.message.reply_text("❌ Nädogry format! /approve 123")
+
+    # Para çekme reddetme
+    elif command == "reject":
+        try:
+            request_id = int(context.args[0])
+            request = db.get_withdrawal_request(request_id)
+
+            if not request:
+                await update.message.reply
