@@ -189,7 +189,7 @@ class Database:
         try:
             cursor.execute("""
                 INSERT INTO users (user_id, username, diamond, referred_by, joined_date, last_task_reset)
-                VALUES (%s, %s, 5, %s, %s, %s)
+                VALUES (%s, %s, 3, %s, %s, %s)
                 ON CONFLICT (user_id) DO NOTHING
             """, (user_id, username, referred_by, int(time.time()), int(time.time())))
 
