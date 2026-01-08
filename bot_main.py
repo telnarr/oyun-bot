@@ -632,8 +632,6 @@ def get_games_keyboard():
         [InlineKeyboardButton("🎰 Lotereýa (Ýeňil)", callback_data="game_scratch_easy")],
         [InlineKeyboardButton("🎰 Lotereýa (Kyn)", callback_data="game_scratch_hard")],
         [InlineKeyboardButton("🎡 Şansly Aýlaw", callback_data="game_wheel")],
-        [InlineKeyboardButton("Täze oýun", callback_data="game_dice")],
-        [InlineKeyboardButton("Täze oýun", callback_data="game_guess")],
         [InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")]
     ]
     return InlineKeyboardMarkup(keyboard)
