@@ -135,7 +135,7 @@ class Database:
                 sponsor_id SERIAL PRIMARY KEY,
                 channel_id TEXT UNIQUE,
                 channel_name TEXT,
-                diamond_reward INTEGER,
+                diamond_reward REAL,
                 is_active BOOLEAN DEFAULT TRUE,
                 created_date BIGINT
             )
@@ -157,7 +157,7 @@ class Database:
                 request_id SERIAL PRIMARY KEY,
                 user_id BIGINT,
                 username TEXT,
-                diamond_amount INTEGER,
+                diamond_amount REAL,
                 manat_amount REAL,
                 request_date BIGINT,
                 status TEXT DEFAULT 'pending',
