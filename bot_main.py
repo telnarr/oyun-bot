@@ -39,7 +39,7 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     # Zorunlu kanallar
-    REQUIRED_CHANNELS = ["@igro_lab", "@diamond_labs"]
+    REQUIRED_CHANNELS = ["@igro_lab", "@diamond_labs", "https://t.me/+DGLchoVaKrhlZTEy"]
 
     # Diamond sistemi
     DIAMOND_TO_MANAT = 5  # 5 diamond = 1 manat
