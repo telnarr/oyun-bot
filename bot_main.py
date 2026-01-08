@@ -196,7 +196,7 @@ class Database:
             if referred_by:
                 cursor.execute("""
                     UPDATE users
-                    SET diamond = diamond + 1, referral_count = referral_count + 1
+                    SET diamond = diamond + 0.5, referral_count = referral_count + 1
                     WHERE user_id = %s
                 """, (referred_by,))
 
