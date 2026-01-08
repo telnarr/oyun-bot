@@ -8,6 +8,7 @@ import asyncio
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from psycopg2.extras import RealDictCursor
 
 # Import from bot_main
 from bot_main import db, Config
@@ -91,28 +92,32 @@ async def admin_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
 
     try:
-        # Database'den en çok diamond'a sahip kullanıcıları çek
-        top_users = db.get_top_users_by_diamond(limit=10)
-    except AttributeError:
-        # Eğer fonksiyon yoksa manuel query
-        try:
-            query_sql = """
-                SELECT user_id, username, diamond 
-                FROM users 
-                WHERE is_banned = 0
-                ORDER BY diamond DESC 
-                LIMIT 10
-            """
-            top_users = db.execute_query(query_sql)
-        except:
-            await query.edit_message_text(
-                "🏆 <b>Iň köp Diamond</b>\n\n❌ Database hatasy ýüze çykdy.",
-                parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_top_users")
-                ]])
-            )
-            return
+        # PostgreSQL query
+        conn = db.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("""
+            SELECT user_id, username, diamond 
+            FROM users 
+            WHERE is_banned = FALSE
+            ORDER BY diamond DESC 
+            LIMIT 10
+        """)
+        top_users = cursor.fetchall()
+        cursor.close()
+        db.return_connection(conn)
+        
+        # Convert to list of dicts
+        top_users = [dict(user) for user in top_users]
+    except Exception as e:
+        logging.error(f"Top diamonds query error: {e}")
+        await query.edit_message_text(
+            "🏆 <b>Iň köp Diamond</b>\n\n❌ Database hatasy ýüze çykdy.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_top_users")
+            ]])
+        )
+        return
 
     if not top_users:
         await query.edit_message_text(
@@ -129,7 +134,7 @@ async def admin_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE)
     medals = ["🥇", "🥈", "🥉"]
     for idx, user in enumerate(top_users, 1):
         medal = medals[idx-1] if idx <= 3 else f"{idx}."
-        username = f"@{user['username']}" if user['username'] else f"ID: {user['user_id']}"
+        username = f"@{user['username']}" if user.get('username') else f"ID: {user['user_id']}"
         text += f"{medal} {username}\n   💎 <b>{user['diamond']}</b> diamond\n\n"
 
     await query.edit_message_text(
