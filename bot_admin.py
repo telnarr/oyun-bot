@@ -89,7 +89,7 @@ async def admin_top_users_menu(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def admin_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """En çok diamond'a sahip kullanıcılar"""
-    query = update.callback_query
+    callback_query = update.callback_query
 
     try:
         # PostgreSQL query
@@ -110,7 +110,7 @@ async def admin_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE)
         top_users = [dict(user) for user in top_users]
     except Exception as e:
         logging.error(f"Top diamonds query error: {e}")
-        await query.edit_message_text(
+        await callback_query.edit_message_text(
             "🏆 <b>Iň köp Diamond</b>\n\n❌ Database hatasy ýüze çykdy.",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
@@ -120,7 +120,7 @@ async def admin_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     if not top_users:
-        await query.edit_message_text(
+        await callback_query.edit_message_text(
             "🏆 <b>Iň köp Diamond</b>\n\n❌ Häzir hiç hili ulanyjy ýok.",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
@@ -137,7 +137,7 @@ async def admin_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE)
         username = f"@{user['username']}" if user.get('username') else f"ID: {user['user_id']}"
         text += f"{medal} {username}\n   💎 <b>{user['diamond']}</b> diamond\n\n"
 
-    await query.edit_message_text(
+    await callback_query.edit_message_text(
         text,
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
@@ -854,12 +854,15 @@ async def handle_admin_callbacks(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     data = query.data
 
+    # Admin panel callbacks
     if data == "admin_panel":
         await show_admin_panel(update, context)
     elif data == "admin_users":
         await admin_users_menu(update, context)
     elif data == "admin_withdrawals":
         await admin_withdrawals_menu(update, context)
+    
+    # Top Users callbacks - YENİ
     elif data == "admin_top_users":
         await admin_top_users_menu(update, context)
     elif data == "admin_top_diamonds":
@@ -868,18 +871,26 @@ async def handle_admin_callbacks(update: Update, context: ContextTypes.DEFAULT_T
         await admin_top_referrals(update, context)
     elif data == "admin_top_withdrawn":
         await admin_top_withdrawn(update, context)
+    
+    # Promo callbacks
     elif data == "admin_promo_create":
         await admin_promo_create_menu(update, context)
     elif data == "admin_promo_delete":
         await admin_promo_delete_menu(update, context)
+    
+    # Sponsor callbacks
     elif data == "admin_sponsor_add":
         await admin_sponsor_add_menu(update, context)
     elif data == "admin_sponsor_delete":
         await admin_sponsor_delete_menu(update, context)
+    
+    # Other callbacks
     elif data == "admin_stats":
         await admin_stats(update, context)
     elif data == "admin_broadcast":
         await admin_broadcast_menu(update, context)
+    
+    # Action callbacks
     elif data.startswith("admin_approve_"):
         await admin_approve_withdrawal(update, context)
     elif data.startswith("admin_reject_"):
