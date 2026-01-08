@@ -47,7 +47,7 @@ class Config:
     MIN_REFERRAL_COUNT = 5
 
     # Para çekme seçenekleri
-    WITHDRAW_OPTIONS = [25, 50, 75, 100]
+    WITHDRAW_OPTIONS = [50, 75, 100]
 
     # Oyun ayarları
     GAME_SETTINGS = {
