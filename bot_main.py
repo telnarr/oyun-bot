@@ -112,7 +112,7 @@ class Database:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
                 code TEXT PRIMARY KEY,
-                diamond_reward INTEGER,
+                diamond_reward REAL,
                 max_uses INTEGER,
                 current_uses INTEGER DEFAULT 0,
                 created_date BIGINT
@@ -632,6 +632,8 @@ def get_games_keyboard():
         [InlineKeyboardButton("🎰 Lotereýa (Ýeňil)", callback_data="game_scratch_easy")],
         [InlineKeyboardButton("🎰 Lotereýa (Kyn)", callback_data="game_scratch_hard")],
         [InlineKeyboardButton("🎡 Şansly Aýlaw", callback_data="game_wheel")],
+        [InlineKeyboardButton("Täze oýun", callback_data="game_dice")],
+        [InlineKeyboardButton("Täze oýun", callback_data="game_guess")],
         [InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -691,7 +693,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         text=(
                             f"🎉 <b>Täze Referal!</b>\n\n"
                             f"👤 @{user.username or user.first_name} siziň referalyňyz bilen bota goşuldy!\n"
-                            f"💎 Bonus: <b>+1 diamond</b>\n\n"
+                            f"💎 Bonus: <b>+2 diamond</b>\n\n"
                             f"👥 Jemi referalyňyz: <b>{referrer_data['referral_count'] + 1}</b>"
                         ),
                         parse_mode="HTML"
@@ -750,7 +752,7 @@ def main():
 
     # Import handlers
     from bot_handlers import (
-        button_callback, 
+        button_callback,
         handle_promo_code_input,
         handle_membership_check
     )
@@ -760,7 +762,7 @@ def main():
 
     # Komutlar
     application.add_handler(CommandHandler("start", start_command))
-    
+
     # Admin komutları
     application.add_handler(CommandHandler("adddia", admin_command))
     application.add_handler(CommandHandler("remdia", admin_command))
@@ -773,10 +775,10 @@ def main():
 
     # Callback handlers
     application.add_handler(CallbackQueryHandler(button_callback))
-    
+
     # Message handlers (promo kod girişi için)
     application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND, 
+        filters.TEXT & ~filters.COMMAND,
         handle_promo_code_input
     ))
 
