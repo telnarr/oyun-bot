@@ -134,8 +134,15 @@ async def admin_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE)
     medals = ["🥇", "🥈", "🥉"]
     for idx, user in enumerate(top_users, 1):
         medal = medals[idx-1] if idx <= 3 else f"{idx}."
-        username = f"@{user['username']}" if user.get('username') else f"ID: {user['user_id']}"
-        text += f"{medal} {username}\n   💎 <b>{user['diamond']}</b> diamond\n\n"
+
+        username = f"@{user['username']}" if user['username'] else "—"
+        telegram_id = user['user_id']
+
+        text += (
+            f"{medal} {username}\n"
+            f"   🆔 <code>{telegram_id}</code>\n"
+            f"   💎 <b>{user['diamond']}</b> diamond\n\n"
+        )
 
     await callback_query.edit_message_text(
         text,
