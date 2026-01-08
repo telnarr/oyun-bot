@@ -62,7 +62,7 @@ class Config:
     }
 
     # Bonus ayarları
-    DAILY_BONUS_AMOUNT = 1
+    DAILY_BONUS_AMOUNT = 0.5
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat
 
 # ============================================================================
@@ -97,8 +97,8 @@ class Database:
             CREATE TABLE IF NOT EXISTS users (
                 user_id BIGINT PRIMARY KEY,
                 username TEXT,
-                diamond INTEGER DEFAULT 0,
-                total_withdrawn INTEGER DEFAULT 0,
+                diamond REAL DEFAULT 0,
+                total_withdrawn REAL DEFAULT 0,
                 referral_count INTEGER DEFAULT 0,
                 referred_by BIGINT,
                 last_bonus_time BIGINT DEFAULT 0,
@@ -189,7 +189,7 @@ class Database:
         try:
             cursor.execute("""
                 INSERT INTO users (user_id, username, diamond, referred_by, joined_date, last_task_reset)
-                VALUES (%s, %s, 3, %s, %s, %s)
+                VALUES (%s, %s, 3.0, %s, %s, %s)
                 ON CONFLICT (user_id) DO NOTHING
             """, (user_id, username, referred_by, int(time.time()), int(time.time())))
 
@@ -717,7 +717,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         f"🎮 <b>Diamond Labs - Oýun oýnap pul gazanyň!</b>\n\n"
-        f"💎 Siziň balansynyz: <b>{user_data['diamond']} diamond</b>\n\n"
+        f"💎 Siziň balansynyz: <b>{user_data['diamond']:.1f} diamond</b>\n\n"
         f"🎯 Oýunlar oýnaň, bonus gazanyň we hakyky pul alyň!\n"
         f"💰 5 diamond = 1 manat\n\n"
         f"📊 Näme etjek bolýaňyz?"
