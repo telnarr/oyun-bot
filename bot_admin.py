@@ -90,8 +90,29 @@ async def admin_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """En çok diamond'a sahip kullanıcılar"""
     query = update.callback_query
 
-    # Database'den en çok diamond'a sahip kullanıcıları çek
-    top_users = db.get_top_users_by_diamond(limit=10)
+    try:
+        # Database'den en çok diamond'a sahip kullanıcıları çek
+        top_users = db.get_top_users_by_diamond(limit=10)
+    except AttributeError:
+        # Eğer fonksiyon yoksa manuel query
+        try:
+            query_sql = """
+                SELECT user_id, username, diamond 
+                FROM users 
+                WHERE is_banned = 0
+                ORDER BY diamond DESC 
+                LIMIT 10
+            """
+            top_users = db.execute_query(query_sql)
+        except:
+            await query.edit_message_text(
+                "🏆 <b>Iň köp Diamond</b>\n\n❌ Database hatasy ýüze çykdy.",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_top_users")
+                ]])
+            )
+            return
 
     if not top_users:
         await query.edit_message_text(
@@ -123,8 +144,29 @@ async def admin_top_referrals(update: Update, context: ContextTypes.DEFAULT_TYPE
     """En çok referral'a sahip kullanıcılar"""
     query = update.callback_query
 
-    # Database'den en çok referral'a sahip kullanıcıları çek
-    top_users = db.get_top_users_by_referral(limit=10)
+    try:
+        # Database'den en çok referral'a sahip kullanıcıları çek
+        top_users = db.get_top_users_by_referral(limit=10)
+    except AttributeError:
+        # Eğer fonksiyon yoksa manuel query
+        try:
+            query_sql = """
+                SELECT user_id, username, referral_count 
+                FROM users 
+                WHERE is_banned = 0
+                ORDER BY referral_count DESC 
+                LIMIT 10
+            """
+            top_users = db.execute_query(query_sql)
+        except:
+            await query.edit_message_text(
+                "🏆 <b>Iň köp Referal</b>\n\n❌ Database hatasy ýüze çykdy.",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_top_users")
+                ]])
+            )
+            return
 
     if not top_users:
         await query.edit_message_text(
@@ -156,8 +198,29 @@ async def admin_top_withdrawn(update: Update, context: ContextTypes.DEFAULT_TYPE
     """En çok para çeken kullanıcılar"""
     query = update.callback_query
 
-    # Database'den en çok para çeken kullanıcıları çek
-    top_users = db.get_top_users_by_withdrawn(limit=10)
+    try:
+        # Database'den en çok para çeken kullanıcıları çek
+        top_users = db.get_top_users_by_withdrawn(limit=10)
+    except AttributeError:
+        # Eğer fonksiyon yoksa manuel query
+        try:
+            query_sql = """
+                SELECT user_id, username, total_withdrawn 
+                FROM users 
+                WHERE is_banned = 0
+                ORDER BY total_withdrawn DESC 
+                LIMIT 10
+            """
+            top_users = db.execute_query(query_sql)
+        except:
+            await query.edit_message_text(
+                "🏆 <b>Iň köp Çekilen</b>\n\n❌ Database hatasy ýüze çykdy.",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_top_users")
+                ]])
+            )
+            return
 
     if not top_users:
         await query.edit_message_text(
