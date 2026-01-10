@@ -105,6 +105,135 @@ class Database:
             Config.DATABASE_URL
         )
         self.init_db()
+        self.migrate_database()  # ← Bu satırı ekleyin
+
+    def migrate_database(self):
+        """Veritabanını yeni yapıya güncelle - Migration"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            print("🔄 Veritabanı güncelleniyor...")
+
+            # 1. users tablosunu güncelle
+            # last_task_reset sütunu yoksa ekle
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='users' AND column_name='last_task_reset'
+                    ) THEN
+                        ALTER TABLE users ADD COLUMN last_task_reset BIGINT DEFAULT 0;
+                    END IF;
+                END $$;
+            """)
+
+            # diamond ve total_withdrawn NUMERIC olsun
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    ALTER TABLE users
+                        ALTER COLUMN diamond TYPE NUMERIC(10, 2) USING diamond::NUMERIC(10, 2);
+                    ALTER TABLE users
+                        ALTER COLUMN total_withdrawn TYPE NUMERIC(10, 2) USING total_withdrawn::NUMERIC(10, 2);
+                EXCEPTION WHEN OTHERS THEN
+                    -- Zaten NUMERIC ise hata vermez
+                    NULL;
+                END $$;
+            """)
+
+            # 2. sponsors tablosunu güncelle
+            # sponsor_type sütunu yoksa ekle
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='sponsors' AND column_name='sponsor_type'
+                    ) THEN
+                        ALTER TABLE sponsors ADD COLUMN sponsor_type TEXT DEFAULT 'task';
+                    END IF;
+                END $$;
+            """)
+
+            # bot_is_admin sütunu yoksa ekle
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='sponsors' AND column_name='bot_is_admin'
+                    ) THEN
+                        ALTER TABLE sponsors ADD COLUMN bot_is_admin BOOLEAN DEFAULT TRUE;
+                    END IF;
+                END $$;
+            """)
+
+            # diamond_reward NUMERIC olsun
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    ALTER TABLE sponsors
+                        ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2) USING diamond_reward::NUMERIC(10, 2);
+                EXCEPTION WHEN OTHERS THEN
+                    NULL;
+                END $$;
+            """)
+
+            # 3. promo_codes tablosunu güncelle
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    ALTER TABLE promo_codes
+                        ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2) USING diamond_reward::NUMERIC(10, 2);
+                EXCEPTION WHEN OTHERS THEN
+                    NULL;
+                END $$;
+            """)
+
+            # 4. withdrawal_requests tablosunu güncelle
+            cursor.execute("""
+                DO $$
+                BEGIN
+                    ALTER TABLE withdrawal_requests
+                        ALTER COLUMN diamond_amount TYPE NUMERIC(10, 2) USING diamond_amount::NUMERIC(10, 2);
+                    ALTER TABLE withdrawal_requests
+                        ALTER COLUMN manat_amount TYPE NUMERIC(10, 2) USING manat_amount::NUMERIC(10, 2);
+                EXCEPTION WHEN OTHERS THEN
+                    NULL;
+                END $$;
+            """)
+
+            # 5. Mevcut NULL değerleri güncelle
+            cursor.execute("""
+                UPDATE users
+                SET last_task_reset = EXTRACT(EPOCH FROM NOW())::BIGINT
+                WHERE last_task_reset IS NULL OR last_task_reset = 0;
+            """)
+
+            cursor.execute("""
+                UPDATE sponsors
+                SET sponsor_type = 'task'
+                WHERE sponsor_type IS NULL;
+            """)
+
+            cursor.execute("""
+                UPDATE sponsors
+                SET bot_is_admin = TRUE
+                WHERE bot_is_admin IS NULL;
+            """)
+
+            conn.commit()
+            print("✅ Veritabanı başarıyla güncellendi!")
+
+        except Exception as e:
+            conn.rollback()
+            print(f"❌ Migration hatası: {e}")
+            logging.error(f"Migration error: {e}")
+        finally:
+            cursor.close()
+            self.return_connection(conn)
 
     def get_connection(self):
         """Bağlantı havuzundan bağlantı al"""
