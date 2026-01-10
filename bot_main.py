@@ -77,8 +77,8 @@ class Config:
     # Şansly Aýlaw - Çarkıfelek
     WHEEL_COST = 0.0  # Her zaman bedava
     # Çarkıfelek ödülleri ve olasılıkları
-    WHEEL_REWARDS = [0, 2, 4, 5, 8, 3, -1, -2]  # Olası sonuçlar
-    WHEEL_WEIGHTS = [25, 18, 8, 5, 2, 12, 20, 20]  # Her sonucun çıkma olasılığı (ağırlık)
+    WHEEL_REWARDS = [0, 2, 4, 5, 8, 3, -2, -3]  # Olası sonuçlar
+    WHEEL_WEIGHTS = [25, 10, 5, 4, 1, 8, 25, 25]  # Her sonucun çıkma olasılığı (ağırlık)
 
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
