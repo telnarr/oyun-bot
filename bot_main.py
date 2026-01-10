@@ -1138,6 +1138,12 @@ def main():
     # Callback handlers
     application.add_handler(CallbackQueryHandler(button_callback))
 
+    # TOPLU POST HANDLER (ÖNCE)
+    application.add_handler(MessageHandler(
+        (filters.PHOTO | filters.VIDEO | filters.Document.ALL) & ~filters.COMMAND,
+        handle_mass_post
+    ))
+
     # Message handlers (promo kod girişi ve toplu post için)
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
