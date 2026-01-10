@@ -108,7 +108,7 @@ class Database:
         self.migrate_database()  # ← Bu satırı ekleyin
 
     def migrate_database(self):
-        """Veritabanını yeni yapıya güncelle - Migration"""
+        """Veritabanını yeni yapıya güncelle - Migration (Basitleştirilmiş)"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
@@ -116,96 +116,94 @@ class Database:
             print("🔄 Veritabanı güncelleniyor...")
 
             # 1. users tablosunu güncelle
-            # last_task_reset sütunu yoksa ekle
-            cursor.execute("""
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM information_schema.columns
-                        WHERE table_name='users' AND column_name='last_task_reset'
-                    ) THEN
-                        ALTER TABLE users ADD COLUMN last_task_reset BIGINT DEFAULT 0;
-                    END IF;
-                END $$;
-            """)
+            # last_task_reset sütunu ekle (eğer yoksa)
+            try:
+                cursor.execute("""
+                    ALTER TABLE users ADD COLUMN last_task_reset BIGINT DEFAULT 0;
+                """)
+                print("✅ users.last_task_reset eklendi")
+            except Exception as e:
+                if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                    print("ℹ️  users.last_task_reset zaten var")
+                else:
+                    print(f"⚠️  users.last_task_reset hatası: {e}")
 
-            # diamond ve total_withdrawn NUMERIC olsun
-            cursor.execute("""
-                DO $$
-                BEGIN
+            # diamond ve total_withdrawn NUMERIC yap
+            try:
+                cursor.execute("""
                     ALTER TABLE users
-                        ALTER COLUMN diamond TYPE NUMERIC(10, 2) USING diamond::NUMERIC(10, 2);
+                    ALTER COLUMN diamond TYPE NUMERIC(10, 2);
+                """)
+                cursor.execute("""
                     ALTER TABLE users
-                        ALTER COLUMN total_withdrawn TYPE NUMERIC(10, 2) USING total_withdrawn::NUMERIC(10, 2);
-                EXCEPTION WHEN OTHERS THEN
-                    -- Zaten NUMERIC ise hata vermez
-                    NULL;
-                END $$;
-            """)
+                    ALTER COLUMN total_withdrawn TYPE NUMERIC(10, 2);
+                """)
+                print("✅ users diamond/total_withdrawn NUMERIC yapıldı")
+            except Exception as e:
+                print(f"ℹ️  users NUMERIC: {e}")
 
             # 2. sponsors tablosunu güncelle
-            # sponsor_type sütunu yoksa ekle
-            cursor.execute("""
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM information_schema.columns
-                        WHERE table_name='sponsors' AND column_name='sponsor_type'
-                    ) THEN
-                        ALTER TABLE sponsors ADD COLUMN sponsor_type TEXT DEFAULT 'task';
-                    END IF;
-                END $$;
-            """)
+            # sponsor_type sütunu ekle
+            try:
+                cursor.execute("""
+                    ALTER TABLE sponsors ADD COLUMN sponsor_type TEXT DEFAULT 'task';
+                """)
+                print("✅ sponsors.sponsor_type eklendi")
+            except Exception as e:
+                if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                    print("ℹ️  sponsors.sponsor_type zaten var")
+                else:
+                    print(f"⚠️  sponsors.sponsor_type hatası: {e}")
 
-            # bot_is_admin sütunu yoksa ekle
-            cursor.execute("""
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM information_schema.columns
-                        WHERE table_name='sponsors' AND column_name='bot_is_admin'
-                    ) THEN
-                        ALTER TABLE sponsors ADD COLUMN bot_is_admin BOOLEAN DEFAULT TRUE;
-                    END IF;
-                END $$;
-            """)
+            # bot_is_admin sütunu ekle
+            try:
+                cursor.execute("""
+                    ALTER TABLE sponsors ADD COLUMN bot_is_admin BOOLEAN DEFAULT TRUE;
+                """)
+                print("✅ sponsors.bot_is_admin eklendi")
+            except Exception as e:
+                if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                    print("ℹ️  sponsors.bot_is_admin zaten var")
+                else:
+                    print(f"⚠️  sponsors.bot_is_admin hatası: {e}")
 
-            # diamond_reward NUMERIC olsun
-            cursor.execute("""
-                DO $$
-                BEGIN
+            # diamond_reward NUMERIC yap
+            try:
+                cursor.execute("""
                     ALTER TABLE sponsors
-                        ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2) USING diamond_reward::NUMERIC(10, 2);
-                EXCEPTION WHEN OTHERS THEN
-                    NULL;
-                END $$;
-            """)
+                    ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2);
+                """)
+                print("✅ sponsors.diamond_reward NUMERIC yapıldı")
+            except Exception as e:
+                print(f"ℹ️  sponsors NUMERIC: {e}")
 
             # 3. promo_codes tablosunu güncelle
-            cursor.execute("""
-                DO $$
-                BEGIN
+            try:
+                cursor.execute("""
                     ALTER TABLE promo_codes
-                        ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2) USING diamond_reward::NUMERIC(10, 2);
-                EXCEPTION WHEN OTHERS THEN
-                    NULL;
-                END $$;
-            """)
+                    ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2);
+                """)
+                print("✅ promo_codes.diamond_reward NUMERIC yapıldı")
+            except Exception as e:
+                print(f"ℹ️  promo_codes NUMERIC: {e}")
 
             # 4. withdrawal_requests tablosunu güncelle
-            cursor.execute("""
-                DO $$
-                BEGIN
+            try:
+                cursor.execute("""
                     ALTER TABLE withdrawal_requests
-                        ALTER COLUMN diamond_amount TYPE NUMERIC(10, 2) USING diamond_amount::NUMERIC(10, 2);
+                    ALTER COLUMN diamond_amount TYPE NUMERIC(10, 2);
+                """)
+                cursor.execute("""
                     ALTER TABLE withdrawal_requests
-                        ALTER COLUMN manat_amount TYPE NUMERIC(10, 2) USING manat_amount::NUMERIC(10, 2);
-                EXCEPTION WHEN OTHERS THEN
-                    NULL;
-                END $$;
-            """)
+                    ALTER COLUMN manat_amount TYPE NUMERIC(10, 2);
+                """)
+                print("✅ withdrawal_requests NUMERIC yapıldı")
+            except Exception as e:
+                print(f"ℹ️  withdrawal_requests NUMERIC: {e}")
 
-            # 5. Mevcut NULL değerleri güncelle
+            conn.commit()
+
+            # 5. NULL değerleri güncelle
             cursor.execute("""
                 UPDATE users
                 SET last_task_reset = EXTRACT(EPOCH FROM NOW())::BIGINT
@@ -234,6 +232,7 @@ class Database:
         finally:
             cursor.close()
             self.return_connection(conn)
+
 
     def get_connection(self):
         """Bağlantı havuzundan bağlantı al"""
