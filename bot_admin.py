@@ -769,6 +769,10 @@ async def admin_mass_post_menu(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def handle_mass_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Toplu post işle - Yeni Özellik"""
+    # Güvenli kontrol - context.user_data None olabilir
+    if not context.user_data:
+        return
+
     if not context.user_data.get('waiting_for_mass_post'):
         return
 
@@ -876,6 +880,7 @@ async def handle_mass_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await status_msg.edit_text(result_text, parse_mode="HTML")
 
+    
 # ============================================================================
 # ADMİN KOMUTLARI
 # ============================================================================
