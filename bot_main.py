@@ -50,7 +50,7 @@ class Config:
     WITHDRAW_OPTIONS = [50.0, 75.0, 100.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 1.0  # Referal çağıran kişiye verilecek diamond
+    REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
     NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
 
     # ========== OYUN AYARLARI ==========
@@ -78,7 +78,7 @@ class Config:
     WHEEL_COST = 0.0  # Her zaman bedava
     # Çarkıfelek ödülleri ve olasılıkları
     WHEEL_REWARDS = [0, 2, 4, 5, 8, 3, -1, -2]  # Olası sonuçlar
-    WHEEL_WEIGHTS = [20, 10, 5, 5, 1, 7, 15, 15]  # Her sonucun çıkma olasılığı (ağırlık)
+    WHEEL_WEIGHTS = [25, 18, 8, 5, 2, 12, 20, 20]  # Her sonucun çıkma olasılığı (ağırlık)
 
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
