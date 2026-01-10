@@ -50,7 +50,7 @@ class Config:
     WITHDRAW_OPTIONS = [50.0, 75.0, 100.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
+    REFERAL_REWARD = 1.5  # Referal çağıran kişiye verilecek diamond
     NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
 
     # ========== OYUN AYARLARI ==========
