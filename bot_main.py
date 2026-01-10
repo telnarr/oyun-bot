@@ -108,129 +108,173 @@ class Database:
         self.migrate_database()  # ← Bu satırı ekleyin
 
     def migrate_database(self):
-        """Veritabanını yeni yapıya güncelle - Migration (Basitleştirilmiş)"""
+        """Veritabanını yeni yapıya güncelle - Migration (Transaction Güvenli)"""
         conn = self.get_connection()
-        cursor = conn.cursor()
 
         try:
             print("🔄 Veritabanı güncelleniyor...")
 
-            # 1. users tablosunu güncelle
-            # last_task_reset sütunu ekle (eğer yoksa)
+            # Her işlem için ayrı cursor ve commit
+
+            # 1. users.last_task_reset ekle
             try:
-                cursor.execute("""
-                    ALTER TABLE users ADD COLUMN last_task_reset BIGINT DEFAULT 0;
-                """)
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE users ADD COLUMN last_task_reset BIGINT DEFAULT 0;")
+                conn.commit()
+                cursor.close()
                 print("✅ users.last_task_reset eklendi")
             except Exception as e:
+                conn.rollback()
                 if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
                     print("ℹ️  users.last_task_reset zaten var")
                 else:
-                    print(f"⚠️  users.last_task_reset hatası: {e}")
+                    print(f"⚠️  users.last_task_reset: {e}")
 
-            # diamond ve total_withdrawn NUMERIC yap
+            # 2. sponsors.sponsor_type ekle
             try:
-                cursor.execute("""
-                    ALTER TABLE users
-                    ALTER COLUMN diamond TYPE NUMERIC(10, 2);
-                """)
-                cursor.execute("""
-                    ALTER TABLE users
-                    ALTER COLUMN total_withdrawn TYPE NUMERIC(10, 2);
-                """)
-                print("✅ users diamond/total_withdrawn NUMERIC yapıldı")
-            except Exception as e:
-                print(f"ℹ️  users NUMERIC: {e}")
-
-            # 2. sponsors tablosunu güncelle
-            # sponsor_type sütunu ekle
-            try:
-                cursor.execute("""
-                    ALTER TABLE sponsors ADD COLUMN sponsor_type TEXT DEFAULT 'task';
-                """)
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE sponsors ADD COLUMN sponsor_type TEXT DEFAULT 'task';")
+                conn.commit()
+                cursor.close()
                 print("✅ sponsors.sponsor_type eklendi")
             except Exception as e:
+                conn.rollback()
                 if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
                     print("ℹ️  sponsors.sponsor_type zaten var")
                 else:
-                    print(f"⚠️  sponsors.sponsor_type hatası: {e}")
+                    print(f"⚠️  sponsors.sponsor_type: {e}")
 
-            # bot_is_admin sütunu ekle
+            # 3. sponsors.bot_is_admin ekle
             try:
-                cursor.execute("""
-                    ALTER TABLE sponsors ADD COLUMN bot_is_admin BOOLEAN DEFAULT TRUE;
-                """)
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE sponsors ADD COLUMN bot_is_admin BOOLEAN DEFAULT TRUE;")
+                conn.commit()
+                cursor.close()
                 print("✅ sponsors.bot_is_admin eklendi")
             except Exception as e:
+                conn.rollback()
                 if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
                     print("ℹ️  sponsors.bot_is_admin zaten var")
                 else:
-                    print(f"⚠️  sponsors.bot_is_admin hatası: {e}")
+                    print(f"⚠️  sponsors.bot_is_admin: {e}")
 
-            # diamond_reward NUMERIC yap
+            # 4. users diamond NUMERIC
             try:
-                cursor.execute("""
-                    ALTER TABLE sponsors
-                    ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2);
-                """)
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE users ALTER COLUMN diamond TYPE NUMERIC(10, 2);")
+                conn.commit()
+                cursor.close()
+                print("✅ users.diamond NUMERIC yapıldı")
+            except Exception as e:
+                conn.rollback()
+                print(f"ℹ️  users.diamond NUMERIC: zaten doğru tipte")
+
+            # 5. users total_withdrawn NUMERIC
+            try:
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE users ALTER COLUMN total_withdrawn TYPE NUMERIC(10, 2);")
+                conn.commit()
+                cursor.close()
+                print("✅ users.total_withdrawn NUMERIC yapıldı")
+            except Exception as e:
+                conn.rollback()
+                print(f"ℹ️  users.total_withdrawn NUMERIC: zaten doğru tipte")
+
+            # 6. sponsors diamond_reward NUMERIC
+            try:
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE sponsors ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2);")
+                conn.commit()
+                cursor.close()
                 print("✅ sponsors.diamond_reward NUMERIC yapıldı")
             except Exception as e:
-                print(f"ℹ️  sponsors NUMERIC: {e}")
+                conn.rollback()
+                print(f"ℹ️  sponsors.diamond_reward NUMERIC: zaten doğru tipte")
 
-            # 3. promo_codes tablosunu güncelle
+            # 7. promo_codes diamond_reward NUMERIC
             try:
-                cursor.execute("""
-                    ALTER TABLE promo_codes
-                    ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2);
-                """)
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE promo_codes ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2);")
+                conn.commit()
+                cursor.close()
                 print("✅ promo_codes.diamond_reward NUMERIC yapıldı")
             except Exception as e:
-                print(f"ℹ️  promo_codes NUMERIC: {e}")
+                conn.rollback()
+                print(f"ℹ️  promo_codes.diamond_reward NUMERIC: zaten doğru tipte")
 
-            # 4. withdrawal_requests tablosunu güncelle
+            # 8. withdrawal_requests diamond_amount NUMERIC
             try:
-                cursor.execute("""
-                    ALTER TABLE withdrawal_requests
-                    ALTER COLUMN diamond_amount TYPE NUMERIC(10, 2);
-                """)
-                cursor.execute("""
-                    ALTER TABLE withdrawal_requests
-                    ALTER COLUMN manat_amount TYPE NUMERIC(10, 2);
-                """)
-                print("✅ withdrawal_requests NUMERIC yapıldı")
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE withdrawal_requests ALTER COLUMN diamond_amount TYPE NUMERIC(10, 2);")
+                conn.commit()
+                cursor.close()
+                print("✅ withdrawal_requests.diamond_amount NUMERIC yapıldı")
             except Exception as e:
-                print(f"ℹ️  withdrawal_requests NUMERIC: {e}")
+                conn.rollback()
+                print(f"ℹ️  withdrawal_requests.diamond_amount NUMERIC: zaten doğru tipte")
 
-            conn.commit()
+            # 9. withdrawal_requests manat_amount NUMERIC
+            try:
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE withdrawal_requests ALTER COLUMN manat_amount TYPE NUMERIC(10, 2);")
+                conn.commit()
+                cursor.close()
+                print("✅ withdrawal_requests.manat_amount NUMERIC yapıldı")
+            except Exception as e:
+                conn.rollback()
+                print(f"ℹ️  withdrawal_requests.manat_amount NUMERIC: zaten doğru tipte")
 
-            # 5. NULL değerleri güncelle
-            cursor.execute("""
-                UPDATE users
-                SET last_task_reset = EXTRACT(EPOCH FROM NOW())::BIGINT
-                WHERE last_task_reset IS NULL OR last_task_reset = 0;
-            """)
+            # 10. NULL değerleri güncelle - users.last_task_reset
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE users
+                    SET last_task_reset = EXTRACT(EPOCH FROM NOW())::BIGINT
+                    WHERE last_task_reset IS NULL OR last_task_reset = 0;
+                """)
+                conn.commit()
+                cursor.close()
+                print("✅ users.last_task_reset NULL değerleri güncellendi")
+            except Exception as e:
+                conn.rollback()
+                print(f"ℹ️  users.last_task_reset güncelleme: {e}")
 
-            cursor.execute("""
-                UPDATE sponsors
-                SET sponsor_type = 'task'
-                WHERE sponsor_type IS NULL;
-            """)
+            # 11. NULL değerleri güncelle - sponsors.sponsor_type
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE sponsors
+                    SET sponsor_type = 'task'
+                    WHERE sponsor_type IS NULL;
+                """)
+                conn.commit()
+                cursor.close()
+                print("✅ sponsors.sponsor_type NULL değerleri güncellendi")
+            except Exception as e:
+                conn.rollback()
+                print(f"ℹ️  sponsors.sponsor_type güncelleme: {e}")
 
-            cursor.execute("""
-                UPDATE sponsors
-                SET bot_is_admin = TRUE
-                WHERE bot_is_admin IS NULL;
-            """)
+            # 12. NULL değerleri güncelle - sponsors.bot_is_admin
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE sponsors
+                    SET bot_is_admin = TRUE
+                    WHERE bot_is_admin IS NULL;
+                """)
+                conn.commit()
+                cursor.close()
+                print("✅ sponsors.bot_is_admin NULL değerleri güncellendi")
+            except Exception as e:
+                conn.rollback()
+                print(f"ℹ️  sponsors.bot_is_admin güncelleme: {e}")
 
-            conn.commit()
-            print("✅ Veritabanı başarıyla güncellendi!")
+            print("✅ Veritabanı migration tamamlandı!")
 
         except Exception as e:
-            conn.rollback()
-            print(f"❌ Migration hatası: {e}")
+            print(f"❌ Genel migration hatası: {e}")
             logging.error(f"Migration error: {e}")
         finally:
-            cursor.close()
             self.return_connection(conn)
 
 
