@@ -1032,6 +1032,10 @@ async def show_promo_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_promo_code_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Promo kod mesajını işle"""
+    # Güvenli kontrol - context.user_data None olabilir
+    if not context.user_data:
+        return
+
     if not context.user_data.get('waiting_for_promo'):
         return
 
@@ -1042,7 +1046,7 @@ async def handle_promo_code_input(update: Update, context: ContextTypes.DEFAULT_
 
     if result is None:
         await update.message.reply_text(
-            "❌ <b>Ýalňyş kod!</b>\n\n"
+            "❌ <b>Çalışmaýan kod!</b>\n\n"
             "Bu promo kod tapylmady.",
             parse_mode="HTML"
         )
@@ -1069,6 +1073,7 @@ async def handle_promo_code_input(update: Update, context: ContextTypes.DEFAULT_
 
     context.user_data['waiting_for_promo'] = False
 
+    
 # ============================================================================
 # DİĞER FONKSİYONLAR
 # ============================================================================
