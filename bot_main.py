@@ -70,7 +70,7 @@ class Config:
 
     # Lotereýa (Kyn) - Zor Scratch
     SCRATCH_HARD_COST = 0.0
-    SCRATCH_HARD_WIN_REWARD = 2.0
+    SCRATCH_HARD_WIN_REWARD = 4.0
     SCRATCH_HARD_LOSE_PENALTY = -2.0
     SCRATCH_HARD_WIN_CHANCE = 25  # %25 kazanma şansı
 
