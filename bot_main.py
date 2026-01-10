@@ -33,7 +33,7 @@ from telegram.ext import (
 
 class Config:
     """Bot yapılandırması - Tüm ayarlar buradan yönetilir"""
-
+    
     # ========== BOT AYARLARI ==========
     BOT_TOKEN = os.getenv("BOT_TOKEN", "8133082070:AAE1rRGxQ9_Qqx-LZW54WFuFuGEo9FZhhWc")
     ADMIN_IDS = [7172270461]  # Admin kullanıcı ID'leri
@@ -45,7 +45,7 @@ class Config:
     DIAMOND_TO_MANAT = 5.0  # 5 diamond = 1 manat
     MIN_WITHDRAW_DIAMOND = 50.0  # Minimum çekilebilir diamond
     MIN_REFERRAL_COUNT = 5  # Para çekmek için minimum referal sayısı
-
+    
     # Para çekme seçenekleri
     WITHDRAW_OPTIONS = [50.0, 75.0, 100.0]
 
@@ -55,7 +55,7 @@ class Config:
 
     # ========== OYUN AYARLARI ==========
     # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
-
+    
     # Almayı Tap Oyunu
     APPLE_BOX_COST = 0.0  # Giriş ücreti (0 = bedava)
     APPLE_BOX_WIN_REWARD = 2.0  # Kazanınca alınan diamond
@@ -79,7 +79,7 @@ class Config:
     # Çarkıfelek ödülleri ve olasılıkları
     WHEEL_REWARDS = [0, 2, 4, 5, 8, 3, -1, -2]  # Olası sonuçlar
     WHEEL_WEIGHTS = [20, 10, 5, 5, 1, 7, 15, 15]  # Her sonucun çıkma olasılığı (ağırlık)
-
+    
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat (saniye cinsinden)
@@ -385,7 +385,7 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("""
-            SELECT * FROM sponsors
+            SELECT * FROM sponsors 
             WHERE is_active = TRUE AND sponsor_type = %s
             ORDER BY created_date ASC
         """, (sponsor_type,))
@@ -519,8 +519,8 @@ class Database:
         cursor = conn.cursor()
         # Sadece task tipindeki sponsorları sıfırla
         cursor.execute("""
-            DELETE FROM user_sponsors
-            WHERE user_id = %s
+            DELETE FROM user_sponsors 
+            WHERE user_id = %s 
             AND sponsor_id IN (
                 SELECT sponsor_id FROM sponsors WHERE sponsor_type = %s
             )
@@ -705,7 +705,7 @@ async def check_channel_membership(user_id: int, context: ContextTypes.DEFAULT_T
     """
     required_channels = db.get_required_channels()
     not_joined = []
-
+    
     for sponsor in required_channels:
         try:
             member = await context.bot.get_chat_member(sponsor['channel_id'], user_id)
@@ -714,7 +714,7 @@ async def check_channel_membership(user_id: int, context: ContextTypes.DEFAULT_T
         except Exception as e:
             logging.error(f"Kanal kontrolü hatası {sponsor['channel_id']}: {e}")
             not_joined.append(sponsor['channel_name'])
-
+    
     return (len(not_joined) == 0, not_joined)
 
 async def check_sponsor_membership(user_id: int, channel_id: str, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -733,15 +733,15 @@ async def check_bot_admin_in_sponsor(sponsor_id: int, context: ContextTypes.DEFA
     sponsor = db.get_sponsor_by_id(sponsor_id)
     if not sponsor:
         return False
-
+    
     try:
         bot_member = await context.bot.get_chat_member(sponsor['channel_id'], context.bot.id)
         is_admin = bot_member.status in ["administrator", "creator"]
-
+        
         # Durumu veritabanında güncelle
         if sponsor['bot_is_admin'] != is_admin:
             db.update_sponsor_bot_admin_status(sponsor_id, is_admin)
-
+            
             # Eğer bot admin değilse, admin'e bildirim gönder
             if not is_admin:
                 for admin_id in Config.ADMIN_IDS:
@@ -759,7 +759,7 @@ async def check_bot_admin_in_sponsor(sponsor_id: int, context: ContextTypes.DEFA
                         )
                     except Exception as e:
                         logging.error(f"Admin bildirim hatası: {e}")
-
+        
         return is_admin
     except Exception as e:
         logging.error(f"Bot admin kontrolü hatası: {e}")
@@ -835,7 +835,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_member:
         # Takip edilmesi gereken kanalları göster
         required_channels = db.get_required_channels()
-
+        
         keyboard = []
         for sponsor in required_channels:
             keyboard.append([
@@ -844,7 +844,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     url=f"https://t.me/{sponsor['channel_id'].replace('@', '')}"
                 )
             ])
-
+        
         keyboard.append([
             InlineKeyboardButton(
                 "✅ Ählisinä Agza Boldum",
@@ -946,7 +946,7 @@ def main():
         handle_promo_code_input,
         handle_membership_check
     )
-    from bot_admin import admin_command
+    from bot_admin import admin_command, handle_mass_post
 
     application = Application.builder().token(Config.BOT_TOKEN).build()
 
@@ -966,10 +966,16 @@ def main():
     # Callback handlers
     application.add_handler(CallbackQueryHandler(button_callback))
 
-    # Message handlers (promo kod girişi için)
+    # Message handlers (promo kod girişi ve toplu post için)
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         handle_promo_code_input
+    ))
+    
+    # Toplu post handler (foto, video, document)
+    application.add_handler(MessageHandler(
+        (filters.PHOTO | filters.VIDEO | filters.Document.ALL) & ~filters.COMMAND,
+        handle_mass_post
     ))
 
     print("🤖 Bot başlady...")
