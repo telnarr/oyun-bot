@@ -44,6 +44,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
+    # HER İŞLEMDE AKTİVİTE GÜNCELLE - YENİ
+    db.update_last_activity(user_id)
+
     # Ana menü
     if data == "back_main":
         await show_main_menu(update, context)
@@ -131,6 +134,9 @@ async def handle_membership_check(update: Update, context: ContextTypes.DEFAULT_
     """Kanal takibi kontrolü - Geliştirilmiş versiyon"""
     query = update.callback_query
     user = query.from_user
+
+    # Aktivite güncelle - YENİ
+    db.update_last_activity(user.id)
 
     referred_by = None
     if "_" in query.data:
@@ -295,7 +301,7 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"   • Gazansaň: +{Config.APPLE_BOX_WIN_REWARD} 💎\n"
         f"   • Ýitirseň: {Config.APPLE_BOX_LOSE_PENALTY} 💎\n"
         f"   • Şans: %{Config.APPLE_BOX_WIN_CHANCE}\n\n"
-        f"🎰 <b>Lotereýa (Ýeňil)</b>\n"
+        f"🎰 <b>Lotereýa (Çeňil)</b>\n"
         f"   • Oýnamak: MUGT!\n"
         f"   • Gazansaň: +{Config.SCRATCH_EASY_WIN_REWARD} 💎\n"
         f"   • Ýitirseň: {Config.SCRATCH_EASY_LOSE_PENALTY} 💎\n"
@@ -1040,6 +1046,10 @@ async def handle_promo_code_input(update: Update, context: ContextTypes.DEFAULT_
         return
 
     user_id = update.effective_user.id
+
+    # Aktivite güncelle - YENİ
+    db.update_last_activity(user_id)
+
     promo_code = update.message.text.strip().upper()
 
     result = db.use_promo_code(promo_code, user_id)
