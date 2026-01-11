@@ -42,16 +42,16 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     # ========== DİAMOND SİSTEMİ ==========
-    DIAMOND_TO_MANAT = 5.0  # 5 diamond = 1 manat
-    MIN_WITHDRAW_DIAMOND = 50.0  # Minimum çekilebilir diamond
-    MIN_REFERRAL_COUNT = 5  # Para çekmek için minimum referal sayısı
+    DIAMOND_TO_MANAT = 10.0  # 5 diamond = 1 manat
+    MIN_WITHDRAW_DIAMOND = 100.0  # Minimum çekilebilir diamond
+    MIN_REFERRAL_COUNT = 10  # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
-    WITHDRAW_OPTIONS = [50.0, 75.0, 100.0]
+    WITHDRAW_OPTIONS = [100.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
-    NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
+    REFERAL_REWARD = 2.5  # Referal çağıran kişiye verilecek diamond
+    NEW_USER_BONUS = 5.0  # Yeni kullanıcıya verilecek başlangıç diamond
 
     # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
     INACTIVITY_TIME = 86400  # 24 saat (saniye cinsinden) - kullanıcı bu süre boyunca aktif değilse ceza alır
@@ -61,31 +61,31 @@ class Config:
     # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
 
     # Almayı Tap Oyunu
-    APPLE_BOX_COST = 0.0  # Giriş ücreti (0 = bedava)
-    APPLE_BOX_WIN_REWARD = 1.0  # Kazanınca alınan diamond
-    APPLE_BOX_LOSE_PENALTY = -1.0  # Kaybedince düşen diamond
+    APPLE_BOX_COST = 5.0  # Giriş ücreti (0 = bedava)
+    APPLE_BOX_WIN_REWARD = 10.0  # Kazanınca alınan diamond
+    APPLE_BOX_LOSE_PENALTY = -0.0  # Kaybedince düşen diamond
     APPLE_BOX_WIN_CHANCE = 40  # Kazanma şansı (%)
 
     # Lotereýa (Çeňil) - Kolay Scratch
-    SCRATCH_EASY_COST = 0.0
-    SCRATCH_EASY_WIN_REWARD = 1.0
-    SCRATCH_EASY_LOSE_PENALTY = -1.0
+    SCRATCH_EASY_COST = 5.0
+    SCRATCH_EASY_WIN_REWARD = 10.0
+    SCRATCH_EASY_LOSE_PENALTY = -0.0
     SCRATCH_EASY_WIN_CHANCE = 60  # %60 kazanma şansı
 
     # Lotereýa (Kyn) - Zor Scratch
-    SCRATCH_HARD_COST = 0.0
-    SCRATCH_HARD_WIN_REWARD = 3.0
-    SCRATCH_HARD_LOSE_PENALTY = -1.0
+    SCRATCH_HARD_COST = 5.0
+    SCRATCH_HARD_WIN_REWARD = 15.0
+    SCRATCH_HARD_LOSE_PENALTY = -0.0
     SCRATCH_HARD_WIN_CHANCE = 25  # %25 kazanma şansı
 
     # Şansly Aýlaw - Çarkıfelek
-    WHEEL_COST = 0.0  # Her zaman bedava
+    WHEEL_COST = 10.0  # Her zaman bedava
     # Çarkıfelek ödülleri ve olasılıkları
-    WHEEL_REWARDS = [0, 2, 4, 5, 6, 3, -2, -3]  # Olası sonuçlar
-    WHEEL_WEIGHTS = [25, 10, 5, 4, 1, 8, 25, 25]  # Her sonucun çıkma olasılığı (ağırlık)
+    WHEEL_REWARDS = [0, 5, 10, 20, 50]  # Olası sonuçlar
+    WHEEL_WEIGHTS = [20, 25, 20, 8, 2]  # Her sonucun çıkma olasılığı (ağırlık)
 
     # ========== BONUS AYARLARI ==========
-    DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
+    DAILY_BONUS_AMOUNT = 5.0  # Günlük bonus miktarı
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat (saniye cinsinden)
 
     # ========== MİNİMUM BAKİYE KONTROLÜ ==========
@@ -1055,7 +1055,7 @@ def get_games_keyboard():
     """Oyunlar menüsü"""
     keyboard = [
         [InlineKeyboardButton("🎯 Almany Tap", callback_data="game_apple")],
-        [InlineKeyboardButton("🎰 Lotereýa (Çeňil)", callback_data="game_scratch_easy")],
+        [InlineKeyboardButton("🎰 Lotereýa (Ýeňil)", callback_data="game_scratch_easy")],
         [InlineKeyboardButton("🎰 Lotereýa (Kyn)", callback_data="game_scratch_hard")],
         [InlineKeyboardButton("🎡 Şansly Aýlaw", callback_data="game_wheel")],
         [InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")]
