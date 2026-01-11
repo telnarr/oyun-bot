@@ -3,7 +3,7 @@
 """
 Telegram Diamond Bot - Oyun Oynayarak Para Kazan
 Türkmen Dili | PostgreSQL | Modüler Yapı
-Güncellenmiş Versiyon - Yeni Özellikler
+Güncellenmiş Versiyon - İnaktivite Ceza Sistemi Eklendi
 """
 
 import asyncio
@@ -50,8 +50,12 @@ class Config:
     WITHDRAW_OPTIONS = [50.0, 75.0, 100.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 2.5  # Referal çağıran kişiye verilecek diamond
+    REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
     NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
+
+    # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
+    INACTIVITY_TIME = 86400  # 24 saat (saniye cinsinden) - kullanıcı bu süre boyunca aktif değilse ceza alır
+    INACTIVITY_PENALTY = -1.0  # İnaktivite cezası (diamond olarak)
 
     # ========== OYUN AYARLARI ==========
     # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
@@ -62,7 +66,7 @@ class Config:
     APPLE_BOX_LOSE_PENALTY = -1.0  # Kaybedince düşen diamond
     APPLE_BOX_WIN_CHANCE = 40  # Kazanma şansı (%)
 
-    # Lotereýa (Ýeňil) - Kolay Scratch
+    # Lotereýa (Çeňil) - Kolay Scratch
     SCRATCH_EASY_COST = 0.0
     SCRATCH_EASY_WIN_REWARD = 1.0
     SCRATCH_EASY_LOSE_PENALTY = -1.0
@@ -105,7 +109,7 @@ class Database:
             Config.DATABASE_URL
         )
         self.init_db()
-        self.migrate_database()  # ← Bu satırı ekleyin
+        self.migrate_database()
 
     def migrate_database(self):
         """Veritabanını yeni yapıya güncelle - Migration (Transaction Güvenli)"""
@@ -130,7 +134,21 @@ class Database:
                 else:
                     print(f"⚠️  users.last_task_reset: {e}")
 
-            # 2. sponsors.sponsor_type ekle
+            # 2. users.last_activity ekle - YENİ
+            try:
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE users ADD COLUMN last_activity BIGINT DEFAULT 0;")
+                conn.commit()
+                cursor.close()
+                print("✅ users.last_activity eklendi")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                    print("ℹ️  users.last_activity zaten var")
+                else:
+                    print(f"⚠️  users.last_activity: {e}")
+
+            # 3. sponsors.sponsor_type ekle
             try:
                 cursor = conn.cursor()
                 cursor.execute("ALTER TABLE sponsors ADD COLUMN sponsor_type TEXT DEFAULT 'task';")
@@ -144,7 +162,7 @@ class Database:
                 else:
                     print(f"⚠️  sponsors.sponsor_type: {e}")
 
-            # 3. sponsors.bot_is_admin ekle
+            # 4. sponsors.bot_is_admin ekle
             try:
                 cursor = conn.cursor()
                 cursor.execute("ALTER TABLE sponsors ADD COLUMN bot_is_admin BOOLEAN DEFAULT TRUE;")
@@ -158,7 +176,7 @@ class Database:
                 else:
                     print(f"⚠️  sponsors.bot_is_admin: {e}")
 
-            # 4. users diamond NUMERIC
+            # 5. users diamond NUMERIC
             try:
                 cursor = conn.cursor()
                 cursor.execute("ALTER TABLE users ALTER COLUMN diamond TYPE NUMERIC(10, 2);")
@@ -169,7 +187,7 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  users.diamond NUMERIC: zaten doğru tipte")
 
-            # 5. users total_withdrawn NUMERIC
+            # 6. users total_withdrawn NUMERIC
             try:
                 cursor = conn.cursor()
                 cursor.execute("ALTER TABLE users ALTER COLUMN total_withdrawn TYPE NUMERIC(10, 2);")
@@ -180,7 +198,7 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  users.total_withdrawn NUMERIC: zaten doğru tipte")
 
-            # 6. sponsors diamond_reward NUMERIC
+            # 7. sponsors diamond_reward NUMERIC
             try:
                 cursor = conn.cursor()
                 cursor.execute("ALTER TABLE sponsors ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2);")
@@ -191,7 +209,7 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  sponsors.diamond_reward NUMERIC: zaten doğru tipte")
 
-            # 7. promo_codes diamond_reward NUMERIC
+            # 8. promo_codes diamond_reward NUMERIC
             try:
                 cursor = conn.cursor()
                 cursor.execute("ALTER TABLE promo_codes ALTER COLUMN diamond_reward TYPE NUMERIC(10, 2);")
@@ -202,7 +220,7 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  promo_codes.diamond_reward NUMERIC: zaten doğru tipte")
 
-            # 8. withdrawal_requests diamond_amount NUMERIC
+            # 9. withdrawal_requests diamond_amount NUMERIC
             try:
                 cursor = conn.cursor()
                 cursor.execute("ALTER TABLE withdrawal_requests ALTER COLUMN diamond_amount TYPE NUMERIC(10, 2);")
@@ -213,7 +231,7 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  withdrawal_requests.diamond_amount NUMERIC: zaten doğru tipte")
 
-            # 9. withdrawal_requests manat_amount NUMERIC
+            # 10. withdrawal_requests manat_amount NUMERIC
             try:
                 cursor = conn.cursor()
                 cursor.execute("ALTER TABLE withdrawal_requests ALTER COLUMN manat_amount TYPE NUMERIC(10, 2);")
@@ -224,7 +242,7 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  withdrawal_requests.manat_amount NUMERIC: zaten doğru tipte")
 
-            # 10. NULL değerleri güncelle - users.last_task_reset
+            # 11. NULL değerleri güncelle - users.last_task_reset
             try:
                 cursor = conn.cursor()
                 cursor.execute("""
@@ -239,7 +257,22 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  users.last_task_reset güncelleme: {e}")
 
-            # 11. NULL değerleri güncelle - sponsors.sponsor_type
+            # 12. NULL değerleri güncelle - users.last_activity - YENİ
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE users
+                    SET last_activity = EXTRACT(EPOCH FROM NOW())::BIGINT
+                    WHERE last_activity IS NULL OR last_activity = 0;
+                """)
+                conn.commit()
+                cursor.close()
+                print("✅ users.last_activity NULL değerleri güncellendi")
+            except Exception as e:
+                conn.rollback()
+                print(f"ℹ️  users.last_activity güncelleme: {e}")
+
+            # 13. NULL değerleri güncelle - sponsors.sponsor_type
             try:
                 cursor = conn.cursor()
                 cursor.execute("""
@@ -254,7 +287,7 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  sponsors.sponsor_type güncelleme: {e}")
 
-            # 12. NULL değerleri güncelle - sponsors.bot_is_admin
+            # 14. NULL değerleri güncelle - sponsors.bot_is_admin
             try:
                 cursor = conn.cursor()
                 cursor.execute("""
@@ -292,6 +325,7 @@ class Database:
         cursor = conn.cursor()
 
         # Kullanıcılar tablosu - diamond artık NUMERIC (ondalıklı)
+        # YENİ: last_activity eklendi
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id BIGINT PRIMARY KEY,
@@ -303,7 +337,8 @@ class Database:
                 last_bonus_time BIGINT DEFAULT 0,
                 joined_date BIGINT,
                 is_banned BOOLEAN DEFAULT FALSE,
-                last_task_reset BIGINT DEFAULT 0
+                last_task_reset BIGINT DEFAULT 0,
+                last_activity BIGINT DEFAULT 0
             )
         """)
 
@@ -394,12 +429,14 @@ class Database:
         cursor = conn.cursor()
 
         try:
+            current_time = int(time.time())
             # Yeni kullanıcıya başlangıç bonusu ver
+            # YENİ: last_activity eklendi
             cursor.execute("""
-                INSERT INTO users (user_id, username, diamond, referred_by, joined_date, last_task_reset)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO users (user_id, username, diamond, referred_by, joined_date, last_task_reset, last_activity)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (user_id) DO NOTHING
-            """, (user_id, username, Config.NEW_USER_BONUS, referred_by, int(time.time()), int(time.time())))
+            """, (user_id, username, Config.NEW_USER_BONUS, referred_by, current_time, current_time, current_time))
 
             # Eğer referal varsa, referansı çağıran kişiye bonus ver
             if referred_by:
@@ -443,6 +480,46 @@ class Database:
         conn.commit()
         cursor.close()
         self.return_connection(conn)
+
+    # ========== AKTİVİTE SİSTEMİ - YENİ ==========
+
+    def update_last_activity(self, user_id: int):
+        """Kullanıcının son aktivite zamanını güncelle"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users SET last_activity = %s WHERE user_id = %s
+        """, (int(time.time()), user_id))
+        conn.commit()
+        cursor.close()
+        self.return_connection(conn)
+
+    def get_inactive_users(self) -> List[Dict]:
+        """İnaktif kullanıcıları getir (INACTIVITY_TIME süresi boyunca aktif olmayanlar)"""
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        current_time = int(time.time())
+        threshold_time = current_time - Config.INACTIVITY_TIME
+
+        cursor.execute("""
+            SELECT * FROM users
+            WHERE is_banned = FALSE
+            AND last_activity < %s
+            AND last_activity > 0
+        """, (threshold_time,))
+
+        users = cursor.fetchall()
+        cursor.close()
+        self.return_connection(conn)
+
+        result = []
+        for u in users:
+            user_dict = dict(u)
+            user_dict['diamond'] = float(user_dict['diamond'])
+            user_dict['total_withdrawn'] = float(user_dict['total_withdrawn'])
+            result.append(user_dict)
+        return result
 
     # ========== PROMO KOD İŞLEMLERİ ==========
 
@@ -925,7 +1002,7 @@ async def check_bot_admin_in_sponsor(sponsor_id: int, context: ContextTypes.DEFA
                                 f"Bot artık bu kanalda admin değil:\n"
                                 f"📢 {sponsor['channel_name']}\n"
                                 f"🆔 <code>{sponsor['channel_id']}</code>\n\n"
-                                f"❗️ Sponsor sisteminin düzgün çalışması için botu admin yapın!"
+                                f"‼️ Sponsor sisteminin düzgün çalışması için botu admin yapın!"
                             ),
                             parse_mode="HTML"
                         )
@@ -978,12 +1055,85 @@ def get_games_keyboard():
     """Oyunlar menüsü"""
     keyboard = [
         [InlineKeyboardButton("🎯 Almany Tap", callback_data="game_apple")],
-        [InlineKeyboardButton("🎰 Lotereýa (Ýeňil)", callback_data="game_scratch_easy")],
+        [InlineKeyboardButton("🎰 Lotereýa (Çeňil)", callback_data="game_scratch_easy")],
         [InlineKeyboardButton("🎰 Lotereýa (Kyn)", callback_data="game_scratch_hard")],
         [InlineKeyboardButton("🎡 Şansly Aýlaw", callback_data="game_wheel")],
         [InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")]
     ]
     return InlineKeyboardMarkup(keyboard)
+
+# ============================================================================
+# AKTİVİTE KONTROLÜ - YENİ SİSTEM
+# ============================================================================
+
+async def check_and_penalize_inactive_users(context: ContextTypes.DEFAULT_TYPE):
+    """İnaktif kullanıcıları kontrol et ve cezalandır - BACKGROUND TASK"""
+    try:
+        inactive_users = db.get_inactive_users()
+
+        for user in inactive_users:
+            user_id = user['user_id']
+            balance = user['diamond']
+
+            # Kullanıcının bakiyesi 0 veya eksi mi kontrol et
+            if balance <= 0:
+                # Sadece uyarı mesajı gönder
+                try:
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text=(
+                            f"⚠️ <b>Aktiwlik ýok!</b>\n\n"
+                            f"Siz 24 sagat bäri boty ulanmadyňyz!\n\n"
+                            f"💎 Balansyňyz: <b>{balance:.1f} diamond</b>\n\n"
+                            f"📌 <b>Belllik:</b> Bakiýeňiz 0-dan az bolansoň, "
+                            f"aktiwlik bolmasa diňe duýduryş alýarsyňyz.\n\n"
+                            f"🎮 Bot bilen işjeň boluň:\n"
+                            f"• Oýun oýnaň\n"
+                            f"• Zadanýalary ýerine ýetiriň\n"
+                            f"• Bonus alyň\n\n"
+                            f"Eger işjeň bolmasaňyz, indiki gezek jeza alyp bilersiňiz!"
+                        ),
+                        parse_mode="HTML"
+                    )
+
+                    # Aktivite zamanını güncelle (bir sonraki kontrol için)
+                    db.update_last_activity(user_id)
+
+                except Exception as e:
+                    logging.error(f"Uyarı mesajı gönderilemedi {user_id}: {e}")
+            else:
+                # Bakiye pozitif - ceza uygula
+                penalty = Config.INACTIVITY_PENALTY
+                db.update_diamond(user_id, penalty)
+
+                try:
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text=(
+                            f"⚠️ <b>Aktiwlik ýok - JEZA!</b>\n\n"
+                            f"Siz 24 sagat bäri boty ulanmadyňyz!\n\n"
+                            f"💎 Jeza: <b>{penalty} diamond</b>\n"
+                            f"💰 Täze balansyňyz: <b>{balance + penalty:.1f} diamond</b>\n\n"
+                            f"🎮 <b>Jeza almazlyk üçin:</b>\n"
+                            f"• Her gün boty açyň\n"
+                            f"• Oýunlary oýnaň\n"
+                            f"• Zadanýalary ýerine ýetiriň\n"
+                            f"• Bonus alyň\n\n"
+                            f"📊 Işjeň boluň we diamond gazanyň!"
+                        ),
+                        parse_mode="HTML"
+                    )
+
+                    # Aktivite zamanını güncelle
+                    db.update_last_activity(user_id)
+
+                except Exception as e:
+                    logging.error(f"Ceza mesajı gönderilemedi {user_id}: {e}")
+
+        logging.info(f"İnaktivite kontrolü tamamlandı. {len(inactive_users)} kullanıcı işlendi.")
+
+    except Exception as e:
+        logging.error(f"İnaktivite kontrolü hatası: {e}")
 
 # ============================================================================
 # BOT KOMUTLARI
@@ -992,6 +1142,9 @@ def get_games_keyboard():
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start komutu - Geliştirilmiş sponsor kontrolü"""
     user = update.effective_user
+
+    # Aktivite güncelle - YENİ
+    db.update_last_activity(user.id)
 
     # Davet linki kontrolü
     referred_by = None
@@ -1070,6 +1223,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ana menüyü göster"""
     user = update.effective_user
+
+    # Aktivite güncelle - YENİ
+    db.update_last_activity(user.id)
+
     user_data = db.get_user(user.id)
 
     # Eğer kullanıcı yoksa, oluştur
@@ -1156,7 +1313,18 @@ def main():
         handle_mass_post
     ))
 
+    # İNAKTİVİTE KONTROL JOB - YENİ
+    # Her 6 saatte bir inaktif kullanıcıları kontrol et
+    job_queue = application.job_queue
+    job_queue.run_repeating(
+        check_and_penalize_inactive_users,
+        interval=21600,  # 6 saat (6 * 60 * 60)
+        first=60  # İlk çalıştırma 60 saniye sonra
+    )
+
     print("🤖 Bot başlady...")
+    print(f"⏰ İnaktivite kontrolü aktif: {Config.INACTIVITY_TIME} saniye ({Config.INACTIVITY_TIME/3600:.1f} saat)")
+    print(f"💎 İnaktivite cezası: {Config.INACTIVITY_PENALTY} diamond")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
