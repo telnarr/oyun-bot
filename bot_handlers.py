@@ -314,7 +314,7 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎡 <b>Şansly Aýlaw</b>\n"
         f"   • Oýnamak: -10 💎!\n"
         f"   • Täsirli baýraklar (0 → +50 💎)\n\n"
-        f"⚠️ <b>Ähli oýunlar Diamond utul bolyar!</b>\n"
+        f"⚠️ <b>Ähli oýunlarda Diamond utup bolyar!</b>\n"
         f"✅ Gazansaň diamond alýarsyň\n"
     )
 
