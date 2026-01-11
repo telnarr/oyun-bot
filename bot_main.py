@@ -82,7 +82,7 @@ class Config:
     WHEEL_COST = 10.0  # Her zaman bedava
     # Çarkıfelek ödülleri ve olasılıkları
     WHEEL_REWARDS = [0, 5, 10, 20, 50]  # Olası sonuçlar
-    WHEEL_WEIGHTS = [20, 25, 20, 8, 2]  # Her sonucun çıkma olasılığı (ağırlık)
+    WHEEL_WEIGHTS = [20, 25, 20, 6, 1]  # Her sonucun çıkma olasılığı (ağırlık)
 
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 5.0  # Günlük bonus miktarı
