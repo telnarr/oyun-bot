@@ -50,13 +50,13 @@ class Config:
     WITHDRAW_OPTIONS = [50.0, 75.0, 100.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
+    REFERAL_REWARD = 1.0  # Referal çağıran kişiye verilecek diamond
     NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
 
     # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
     INACTIVITY_TIME = 86400  # 24 saat (saniye cinsinden) - kullanıcı bu süre boyunca aktif değilse ceza alır
     INACTIVITY_PENALTY = -1.0  # İnaktivite cezası (diamond olarak)
-
+    
     # ========== OYUN AYARLARI ==========
     # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
 
@@ -498,21 +498,21 @@ class Database:
         """İnaktif kullanıcıları getir (INACTIVITY_TIME süresi boyunca aktif olmayanlar)"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-
+        
         current_time = int(time.time())
         threshold_time = current_time - Config.INACTIVITY_TIME
-
+        
         cursor.execute("""
             SELECT * FROM users
             WHERE is_banned = FALSE
             AND last_activity < %s
             AND last_activity > 0
         """, (threshold_time,))
-
+        
         users = cursor.fetchall()
         cursor.close()
         self.return_connection(conn)
-
+        
         result = []
         for u in users:
             user_dict = dict(u)
@@ -1066,20 +1066,24 @@ def get_games_keyboard():
 # AKTİVİTE KONTROLÜ - YENİ SİSTEM
 # ============================================================================
 
-async def check_and_penalize_inactive_users(context: ContextTypes.DEFAULT_TYPE):
+async def check_and_penalize_inactive_users(application):
     """İnaktif kullanıcıları kontrol et ve cezalandır - BACKGROUND TASK"""
     try:
+        logging.info("🔍 İnaktivite kontrolü başladı...")
         inactive_users = db.get_inactive_users()
-
+        
+        penalized_count = 0
+        warned_count = 0
+        
         for user in inactive_users:
             user_id = user['user_id']
             balance = user['diamond']
-
+            
             # Kullanıcının bakiyesi 0 veya eksi mi kontrol et
             if balance <= 0:
                 # Sadece uyarı mesajı gönder
                 try:
-                    await context.bot.send_message(
+                    await application.bot.send_message(
                         chat_id=user_id,
                         text=(
                             f"⚠️ <b>Aktiwlik ýok!</b>\n\n"
@@ -1095,19 +1099,20 @@ async def check_and_penalize_inactive_users(context: ContextTypes.DEFAULT_TYPE):
                         ),
                         parse_mode="HTML"
                     )
-
+                    
                     # Aktivite zamanını güncelle (bir sonraki kontrol için)
                     db.update_last_activity(user_id)
-
+                    warned_count += 1
+                    
                 except Exception as e:
                     logging.error(f"Uyarı mesajı gönderilemedi {user_id}: {e}")
             else:
                 # Bakiye pozitif - ceza uygula
                 penalty = Config.INACTIVITY_PENALTY
                 db.update_diamond(user_id, penalty)
-
+                
                 try:
-                    await context.bot.send_message(
+                    await application.bot.send_message(
                         chat_id=user_id,
                         text=(
                             f"⚠️ <b>Aktiwlik ýok - JEZA!</b>\n\n"
@@ -1123,17 +1128,22 @@ async def check_and_penalize_inactive_users(context: ContextTypes.DEFAULT_TYPE):
                         ),
                         parse_mode="HTML"
                     )
-
+                    
                     # Aktivite zamanını güncelle
                     db.update_last_activity(user_id)
-
+                    penalized_count += 1
+                    
                 except Exception as e:
                     logging.error(f"Ceza mesajı gönderilemedi {user_id}: {e}")
-
-        logging.info(f"İnaktivite kontrolü tamamlandı. {len(inactive_users)} kullanıcı işlendi.")
-
+            
+            # Rate limiting için kısa bekleme
+            await asyncio.sleep(0.1)
+        
+        logging.info(f"✅ İnaktivite kontrolü tamamlandı. {len(inactive_users)} kullanıcı kontrol edildi. "
+                    f"Cezalı: {penalized_count}, Uyarılı: {warned_count}")
+        
     except Exception as e:
-        logging.error(f"İnaktivite kontrolü hatası: {e}")
+        logging.error(f"❌ İnaktivite kontrolü hatası: {e}")
 
 # ============================================================================
 # BOT KOMUTLARI
@@ -1223,10 +1233,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ana menüyü göster"""
     user = update.effective_user
-
+    
     # Aktivite güncelle - YENİ
     db.update_last_activity(user.id)
-
+    
     user_data = db.get_user(user.id)
 
     # Eğer kullanıcı yoksa, oluştur
@@ -1313,18 +1323,30 @@ def main():
         handle_mass_post
     ))
 
-    # İNAKTİVİTE KONTROL JOB - YENİ
-    # Her 6 saatte bir inaktif kullanıcıları kontrol et
-    job_queue = application.job_queue
-    job_queue.run_repeating(
-        check_and_penalize_inactive_users,
-        interval=21600,  # 6 saat (6 * 60 * 60)
-        first=60  # İlk çalıştırma 60 saniye sonra
-    )
+    # İNAKTİVİTE KONTROL JOB - YENİ (JobQueue olmadan)
+    # Background task'ı ayrı thread'de çalıştır
+    async def background_inactivity_check():
+        """İnaktivite kontrolünü periyodik olarak çalıştır"""
+        while True:
+            try:
+                await asyncio.sleep(21600)  # 6 saat bekle
+                await check_and_penalize_inactive_users(application)
+            except Exception as e:
+                logging.error(f"Background inactivity check hatası: {e}")
+                await asyncio.sleep(3600)  # Hata durumunda 1 saat bekle
+
+    # Background task'ı başlat
+    async def on_startup(application):
+        """Bot başladığında çalışır"""
+        asyncio.create_task(background_inactivity_check())
+        logging.info("✅ İnaktivite kontrol sistemi başlatıldı")
+
+    application.post_init = on_startup
 
     print("🤖 Bot başlady...")
     print(f"⏰ İnaktivite kontrolü aktif: {Config.INACTIVITY_TIME} saniye ({Config.INACTIVITY_TIME/3600:.1f} saat)")
     print(f"💎 İnaktivite cezası: {Config.INACTIVITY_PENALTY} diamond")
+    print(f"🔄 Kontrol periyodu: Her 6 saatte bir")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
