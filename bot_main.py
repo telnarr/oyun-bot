@@ -44,7 +44,7 @@ class Config:
     # ========== DİAMOND SİSTEMİ ==========
     DIAMOND_TO_MANAT = 10.0  # 5 diamond = 1 manat
     MIN_WITHDRAW_DIAMOND = 100.0  # Minimum çekilebilir diamond
-    MIN_REFERRAL_COUNT = 10  # Para çekmek için minimum referal sayısı
+    MIN_REFERRAL_COUNT = 5  # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
     WITHDRAW_OPTIONS = [100.0]
