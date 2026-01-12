@@ -998,11 +998,11 @@ async def check_bot_admin_in_sponsor(sponsor_id: int, context: ContextTypes.DEFA
                         await context.bot.send_message(
                             chat_id=admin_id,
                             text=(
-                                f"⚠️ <b>DİKKAT!</b>\n\n"
-                                f"Bot artık bu kanalda admin değil:\n"
+                                f"⚠️ <b>DUÝDYRYŞ!</b>\n\n"
+                                f"Bot bu kanalda admin däl:\n"
                                 f"📢 {sponsor['channel_name']}\n"
                                 f"🆔 <code>{sponsor['channel_id']}</code>\n\n"
-                                f"‼️ Sponsor sisteminin düzgün çalışması için botu admin yapın!"
+                                f"‼️ Sponsor kanalda body admin etmeli"
                             ),
                             parse_mode="HTML"
                         )
