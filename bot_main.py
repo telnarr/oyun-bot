@@ -61,25 +61,25 @@ class Config:
     # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
 
     # Almayı Tap Oyunu
-    APPLE_BOX_COST = 10.0  # Giriş ücreti (0 = bedava)
+    APPLE_BOX_COST = 0.0  # Giriş ücreti (0 = bedava)
     APPLE_BOX_WIN_REWARD = 15.0  # Kazanınca alınan diamond
-    APPLE_BOX_LOSE_PENALTY = -0.0  # Kaybedince düşen diamond
+    APPLE_BOX_LOSE_PENALTY = -10.0  # Kaybedince düşen diamond
     APPLE_BOX_WIN_CHANCE = 40  # Kazanma şansı (%)
 
     # Lotereýa (Çeňil) - Kolay Scratch
-    SCRATCH_EASY_COST = 10.0
+    SCRATCH_EASY_COST = 0.0
     SCRATCH_EASY_WIN_REWARD = 15.0
-    SCRATCH_EASY_LOSE_PENALTY = -0.0
+    SCRATCH_EASY_LOSE_PENALTY = -10.0
     SCRATCH_EASY_WIN_CHANCE = 60  # %60 kazanma şansı
 
     # Lotereýa (Kyn) - Zor Scratch
-    SCRATCH_HARD_COST = 10.0
+    SCRATCH_HARD_COST = 0.0
     SCRATCH_HARD_WIN_REWARD = 20.0
-    SCRATCH_HARD_LOSE_PENALTY = -0.0
+    SCRATCH_HARD_LOSE_PENALTY = -10.0
     SCRATCH_HARD_WIN_CHANCE = 25  # %25 kazanma şansı
 
     # Şansly Aýlaw - Çarkıfelek
-    WHEEL_COST = 10.0  # Her zaman bedava
+    WHEEL_COST = 0.0  # Her zaman bedava
     # Çarkıfelek ödülleri ve olasılıkları
     WHEEL_REWARDS = [0, 5, 10, 20, 50]  # Olası sonuçlar
     WHEEL_WEIGHTS = [19, 25, 21, 5, 1]  # Her sonucun çıkma olasılığı (ağırlık)
