@@ -1109,7 +1109,7 @@ async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<b>🔒 Howpsuzlyk</b>\n"
         f"Siziň maglumatlarňyz goragly saklanýar. Hiç bir üçünji tarapa berilmeýär.\n\n"
         f"<b>📞 Goldaw</b>\n"
-        f"Soraglaryňyz bar bolsa: @dekanaska"
+        f"Soraglaryňyz bar bolsa: @alpen_silver"
     )
 
     keyboard = [[InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")]]
