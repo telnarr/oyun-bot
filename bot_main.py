@@ -44,7 +44,7 @@ class Config:
     # ========== DİAMOND SİSTEMİ ==========
     DIAMOND_TO_MANAT = 10.0  # 5 diamond = 1 manat
     MIN_WITHDRAW_DIAMOND = 100.0  # Minimum çekilebilir diamond
-    MIN_REFERRAL_COUNT = 5  # Para çekmek için minimum referal sayısı
+    MIN_REFERRAL_COUNT = 8  # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
     WITHDRAW_OPTIONS = [100.0]
@@ -82,7 +82,7 @@ class Config:
     WHEEL_COST = 10.0  # Her zaman bedava
     # Çarkıfelek ödülleri ve olasılıkları
     WHEEL_REWARDS = [0, 5, 10, 20, 50]  # Olası sonuçlar
-    WHEEL_WEIGHTS = [20, 25, 20, 6, 1]  # Her sonucun çıkma olasılığı (ağırlık)
+    WHEEL_WEIGHTS = [19, 25, 21, 5, 1]  # Her sonucun çıkma olasılığı (ağırlık)
 
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 5.0  # Günlük bonus miktarı
