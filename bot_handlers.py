@@ -503,7 +503,7 @@ async def play_apple_box_game(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
 async def handle_apple_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Kutu seçimi - Güncellenmiş ödül sistemi"""
+    """Kutu seçimi - Güncellenmış ödül sistemi"""
     query = update.callback_query
     await query.answer()
 
@@ -527,7 +527,7 @@ async def handle_apple_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"💎 Gazanç: <b>+{reward} diamond</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_apple"),
+                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_play_game_apple"),  # ← DÜZELTME BURASI
                 InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
             ]])
         )
@@ -548,7 +548,7 @@ async def handle_apple_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"💪 Täzeden synanyşyň!",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_apple"),
+                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_play_game_apple"),  # ← DÜZELTME BURASI
                 InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
             ]])
         )
