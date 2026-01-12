@@ -394,7 +394,7 @@ async def admin_reject_withdrawal(update: Update, context: ContextTypes.DEFAULT_
                 f"📋 Talap №: {request_id}\n"
                 f"💎 Mukdar: {request['diamond_amount']:.1f} diamond\n\n"
                 f"🔄 Diamond hasabyňyzda galýar.\n"
-                f"📞 Soraglar üçin admin bilen habarlaşyň: @dekanaska"
+                f"📞 Soraglar üçin admin bilen habarlaşyň: @alpen_silver"
             ),
             parse_mode="HTML"
         )
@@ -1132,7 +1132,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"📋 Talap №: {request_id}\n"
                         f"💎 Mukdar: {request['diamond_amount']:.1f} diamond\n\n"
                         f"🔄 Diamond hasabyňyzda galýar.\n"
-                        f"📞 Soraglar üçin admin bilen habarlaşyň: @dekanaska"
+                        f"📞 Soraglar üçin admin bilen habarlaşyň: @alpen_silver"
                     ),
                     parse_mode="HTML"
                 )
