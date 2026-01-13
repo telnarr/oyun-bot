@@ -1383,19 +1383,24 @@ def main():
     # Callback handlers
     application.add_handler(CallbackQueryHandler(button_callback))
 
-    # ✅ ÖNEMLİ: SLOT HANDLER EN ÖNCE OLMALI!
+    # ✅ DEBUG HANDLER - GEÇICI (EN ÖNCE!)
+    application.add_handler(MessageHandler(
+        filters.ALL & ~filters.COMMAND,
+        debug_all_messages
+    ))
+
+    # SLOT HANDLER
     application.add_handler(MessageHandler(
         filters.TEXT & filters.Regex("^🎰 SLOT OYNA$") & ~filters.COMMAND,
         play_slot_game
     ))
 
-    # Broadcast ve mass post için medya handler'ları (SLOT'tan sonra)
     application.add_handler(MessageHandler(
         (filters.PHOTO | filters.VIDEO | filters.Document.ALL) & ~filters.COMMAND,
         handle_combined_media
     ))
 
-    # Text handler (promo kod + broadcast için) - EN SON
+    # Text handler
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         handle_combined_text
