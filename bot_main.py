@@ -56,7 +56,7 @@ class Config:
     # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
     INACTIVITY_TIME = 86400  # 24 saat (saniye cinsinden) - kullanıcı bu süre boyunca aktif değilse ceza alır
     INACTIVITY_PENALTY = -1.0  # İnaktivite cezası (diamond olarak)
-    
+
     # ========== OYUN AYARLARI ==========
     # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
 
@@ -498,21 +498,21 @@ class Database:
         """İnaktif kullanıcıları getir (INACTIVITY_TIME süresi boyunca aktif olmayanlar)"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
+
         current_time = int(time.time())
         threshold_time = current_time - Config.INACTIVITY_TIME
-        
+
         cursor.execute("""
             SELECT * FROM users
             WHERE is_banned = FALSE
             AND last_activity < %s
             AND last_activity > 0
         """, (threshold_time,))
-        
+
         users = cursor.fetchall()
         cursor.close()
         self.return_connection(conn)
-        
+
         result = []
         for u in users:
             user_dict = dict(u)
@@ -1071,14 +1071,14 @@ async def check_and_penalize_inactive_users(application):
     try:
         logging.info("🔍 İnaktivite kontrolü başladı...")
         inactive_users = db.get_inactive_users()
-        
+
         penalized_count = 0
         warned_count = 0
-        
+
         for user in inactive_users:
             user_id = user['user_id']
             balance = user['diamond']
-            
+
             # Kullanıcının bakiyesi 0 veya eksi mi kontrol et
             if balance <= 0:
                 # Sadece uyarı mesajı gönder
@@ -1099,18 +1099,18 @@ async def check_and_penalize_inactive_users(application):
                         ),
                         parse_mode="HTML"
                     )
-                    
+
                     # Aktivite zamanını güncelle (bir sonraki kontrol için)
                     db.update_last_activity(user_id)
                     warned_count += 1
-                    
+
                 except Exception as e:
                     logging.error(f"Uyarı mesajı gönderilemedi {user_id}: {e}")
             else:
                 # Bakiye pozitif - ceza uygula
                 penalty = Config.INACTIVITY_PENALTY
                 db.update_diamond(user_id, penalty)
-                
+
                 try:
                     await application.bot.send_message(
                         chat_id=user_id,
@@ -1128,20 +1128,20 @@ async def check_and_penalize_inactive_users(application):
                         ),
                         parse_mode="HTML"
                     )
-                    
+
                     # Aktivite zamanını güncelle
                     db.update_last_activity(user_id)
                     penalized_count += 1
-                    
+
                 except Exception as e:
                     logging.error(f"Ceza mesajı gönderilemedi {user_id}: {e}")
-            
+
             # Rate limiting için kısa bekleme
             await asyncio.sleep(0.1)
-        
+
         logging.info(f"✅ İnaktivite kontrolü tamamlandı. {len(inactive_users)} kullanıcı kontrol edildi. "
                     f"Cezalı: {penalized_count}, Uyarılı: {warned_count}")
-        
+
     except Exception as e:
         logging.error(f"❌ İnaktivite kontrolü hatası: {e}")
 
@@ -1233,10 +1233,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ana menüyü göster"""
     user = update.effective_user
-    
+
     # Aktivite güncelle - YENİ
     db.update_last_activity(user.id)
-    
+
     user_data = db.get_user(user.id)
 
     # Eğer kullanıcı yoksa, oluştur
@@ -1268,6 +1268,45 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
 
+
+
+async def handle_combined_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Medya mesajlarını işle - Broadcast veya Mass Post"""
+    if not context.user_data:
+        return
+
+    # Önce broadcast kontrolü
+    if context.user_data.get('waiting_for_broadcast'):
+        from bot_admin import handle_broadcast_message
+        await handle_broadcast_message(update, context)
+        return
+
+    # Sonra mass post kontrolü
+    if context.user_data.get('waiting_for_mass_post'):
+        from bot_admin import handle_mass_post
+        await handle_mass_post(update, context)
+        return
+
+async def handle_combined_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Text mesajlarını işle - Promo kod veya Broadcast"""
+    if not context.user_data:
+        return
+
+    # Önce broadcast kontrolü
+    if context.user_data.get('waiting_for_broadcast'):
+        from bot_admin import handle_broadcast_message
+        await handle_broadcast_message(update, context)
+        return
+
+    # Sonra promo kod kontrolü
+    if context.user_data.get('waiting_for_promo'):
+        from bot_handlers import handle_promo_code_input
+        await handle_promo_code_input(update, context)
+        return
+
+
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -1285,42 +1324,37 @@ def main():
         handle_promo_code_input,
         handle_membership_check
     )
-    from bot_admin import admin_command, handle_mass_post
+    from bot_admin import admin_command, handle_mass_post, handle_broadcast_message
 
     application = Application.builder().token(Config.BOT_TOKEN).build()
 
     # Komutlar
     application.add_handler(CommandHandler("start", start_command))
 
-    # Admin komutları
+    # Admin komutları (/broadcast KALDIRILDI - artık buton bazlı)
     application.add_handler(CommandHandler("adddia", admin_command))
     application.add_handler(CommandHandler("remdia", admin_command))
     application.add_handler(CommandHandler("userinfo", admin_command))
     application.add_handler(CommandHandler("createpromo", admin_command))
     application.add_handler(CommandHandler("addsponsor", admin_command))
-    application.add_handler(CommandHandler("broadcast", admin_command))
+    # application.add_handler(CommandHandler("broadcast", admin_command))  # BU SATIRI SİLİN veya YORUM SATIRINA ALIN
     application.add_handler(CommandHandler("approve", admin_command))
     application.add_handler(CommandHandler("reject", admin_command))
 
     # Callback handlers
     application.add_handler(CallbackQueryHandler(button_callback))
 
-    # TOPLU POST HANDLER (ÖNCE)
+    # BROADCAST VE TOPLU POST HANDLER'LARI (ÖNCE - sıralama önemli!)
+    # Önce broadcast ve mass post için medya handler'ları
     application.add_handler(MessageHandler(
         (filters.PHOTO | filters.VIDEO | filters.Document.ALL) & ~filters.COMMAND,
-        handle_mass_post
+        handle_combined_media  # Yeni birleşik handler
     ))
 
-    # Message handlers (promo kod girişi ve toplu post için)
+    # Sonra text handler (promo kod + broadcast için)
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
-        handle_promo_code_input
-    ))
-
-    # Admin için toplu post handler'ı ekle
-    application.add_handler(MessageHandler(
-        filters.PHOTO | filters.VIDEO | filters.Document.ALL,
-        handle_mass_post
+        handle_combined_text  # Yeni birleşik handler
     ))
 
     # İNAKTİVİTE KONTROL JOB - YENİ (JobQueue olmadan)
@@ -1344,6 +1378,8 @@ def main():
     application.post_init = on_startup
 
     print("🤖 Bot başlady...")
+    print("📣 Yeni broadcast sistemi aktif: Buton bazlı mesaj gönderimi")
+    print("📮 Toplu post sistemi aktif: Sponsor kanallara post gönderimi")
     print(f"⏰ İnaktivite kontrolü aktif: {Config.INACTIVITY_TIME} saniye ({Config.INACTIVITY_TIME/3600:.1f} saat)")
     print(f"💎 İnaktivite cezası: {Config.INACTIVITY_PENALTY} diamond")
     print(f"🔄 Kontrol periyodu: Her 6 saatte bir")
