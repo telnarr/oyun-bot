@@ -1263,6 +1263,20 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await show_main_menu(update, context)
 
+
+# start_command fonksiyonundan sonra ekleyin:
+async def grupid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Grup ID'sini öğren"""
+    chat = update.effective_chat
+    await update.message.reply_text(
+        f"📍 <b>Grup Bilgileri:</b>\n\n"
+        f"ID: <code>{chat.id}</code>\n"
+        f"Tür: {chat.type}\n"
+        f"Başlık: {chat.title}\n"
+        f"Username: @{chat.username if chat.username else 'yok'}",
+        parse_mode="HTML"
+    )
+
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ana menüyü göster"""
     user = update.effective_user
@@ -1388,6 +1402,9 @@ def main():
 
     # Komutlar
     application.add_handler(CommandHandler("start", start_command))
+    # main() içinde ekleyin:
+    application.add_handler(CommandHandler("grupid", grupid_command))
+
 
     # Admin komutları
     application.add_handler(CommandHandler("adddia", admin_command))
