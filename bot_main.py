@@ -88,7 +88,7 @@ class Config:
     SLOT_CHAT_ID = "-1002550606779"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
     SLOT_WIN_REWARD = 5.0  # Kazanınca alınan diamond (777)
     SLOT_LOSE_PENALTY = -2.0  # Kaybedince düşen diamond
-    SLOT_WIN_CHANCE = 12  # Kazanma şansı (%)
+    SLOT_WIN_CHANCE = 15  # Kazanma şansı (%)
 
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
