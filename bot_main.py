@@ -42,12 +42,12 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     # ========== DİAMOND SİSTEMİ ==========
-    DIAMOND_TO_MANAT = 5.0  # 5 diamond = 1 manat
-    MIN_WITHDRAW_DIAMOND = 35.0  # Minimum çekilebilir diamond
+    DIAMOND_TO_MANAT = 6.0  # 5 diamond = 1 manat
+    MIN_WITHDRAW_DIAMOND = 30.0  # Minimum çekilebilir diamond
     MIN_REFERRAL_COUNT = 5  # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
-    WITHDRAW_OPTIONS = [35.0, 50.0, 75.0, 100.0]
+    WITHDRAW_OPTIONS = [30.0, 60.0, 90.0, 120.0]
 
     # ========== REFERAL SİSTEMİ ==========
     REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
