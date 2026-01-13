@@ -1337,7 +1337,25 @@ async def handle_combined_text(update: Update, context: ContextTypes.DEFAULT_TYP
         await handle_promo_code_input(update, context)
         return
 
+async def debug_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Tüm mesajları logla - grup ID'sini bulmak için"""
+    if update.message:
+        chat_id = update.message.chat_id
+        chat_type = update.message.chat.type
+        text = update.message.text or "[medya]"
+        user = update.message.from_user
 
+        logging.info(f"""
+        ========================================
+        DEBUG MESAJ:
+        Chat ID: {chat_id}
+        Chat Type: {chat_type}
+        Text: {text}
+        User: {user.first_name} (@{user.username})
+        Config SLOT_CHAT_ID: {Config.SLOT_CHAT_ID}
+        Eşleşme: {str(chat_id) == str(Config.SLOT_CHAT_ID)}
+        ========================================
+        """)
 
 
 # ============================================================================
