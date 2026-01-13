@@ -782,12 +782,6 @@ async def play_wheel_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-
-
-# ============================================================================
-# SLOT OYUNU - YENİ SİSTEM
-# ============================================================================
-
 # ============================================================================
 # SLOT OYUNU - DÜZELTİLMİŞ VERSİYON
 # ============================================================================
@@ -820,7 +814,7 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Bakiye kontrolü (0'ın altına inemez)
     if balance < 0:
         await message.reply_text(
-            f"❌ <b>Bakiyeňiz ýeterlik däl!</b>\n"
+            f"❌ <b>Hasabyňyz ýeterlik däl!</b>\n"
             f"💎 Häzirki balans: <b>{balance:.1f} diamond</b>\n\n"
             f"💡 Diamond gazanmak üçin bota giriň!",
             parse_mode="HTML",
@@ -830,7 +824,7 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Animasyon başlat
     animation_msg = await message.reply_text(
-        "🎰 <b>SLOT çarh aýlanýar...</b>",
+        "🎰 <b>SLOT çark aýlanýar...</b>",
         parse_mode="HTML",
         reply_to_message_id=message.message_id
     )
