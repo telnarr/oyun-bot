@@ -85,7 +85,7 @@ class Config:
     WHEEL_WEIGHTS = [25, 10, 5, 4, 1, 8, 25, 25]  # Her sonucun çıkma olasılığı (ağırlık)
 
     # ========== SLOT OYUNU AYARLARI - YENİ ==========
-    SLOT_CHAT_ID = "@barlagidipotyr"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
+    SLOT_CHAT_ID = "-1003546853170"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
     SLOT_WIN_REWARD = 10.0  # Kazanınca alınan diamond (777)
     SLOT_LOSE_PENALTY = -5.0  # Kaybedince düşen diamond
     SLOT_WIN_CHANCE = 15  # Kazanma şansı (%)
