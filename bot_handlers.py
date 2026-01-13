@@ -804,7 +804,7 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not user_data:
         await message.reply_text(
-            "⚠️ İlk önce botu başlatmalısınız: /start",
+            "⚠️ İlki boty ulanmaly bolýaňyz: @gazandyryan_bot",
             reply_to_message_id=message.message_id
         )
         return
