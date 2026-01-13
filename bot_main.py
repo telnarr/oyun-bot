@@ -86,9 +86,9 @@ class Config:
 
     # ========== SLOT OYUNU AYARLARI - YENİ ==========
     SLOT_CHAT_ID = "-1003546853170"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
-    SLOT_WIN_REWARD = 5.0  # Kazanınca alınan diamond (777)
-    SLOT_LOSE_PENALTY = -2.0  # Kaybedince düşen diamond
-    SLOT_WIN_CHANCE = 100  # Kazanma şansı (%)
+    SLOT_WIN_REWARD = 10.0  # Kazanınca alınan diamond (777)
+    SLOT_LOSE_PENALTY = -5.0  # Kaybedince düşen diamond
+    SLOT_WIN_CHANCE = 15  # Kazanma şansı (%)
 
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
@@ -1417,7 +1417,7 @@ def main():
 
     # ⚠️ ÖNEMLİ: SLOT HANDLER EN ÖNCE OLMALI!
     application.add_handler(MessageHandler(
-        filters.TEXT & filters.Regex("^🎰 SLOT OYNA$") & ~filters.COMMAND,
+        filters.TEXT & filters.Regex("^🎰 SLOT OÝNA$") & ~filters.COMMAND,
         play_slot_game
     ))
 
@@ -1454,7 +1454,7 @@ def main():
         """SLOT grubuna buton gönder"""
         try:
             keyboard = ReplyKeyboardMarkup(
-                [[KeyboardButton("🎰 SLOT OYNA")]],
+                [[KeyboardButton("🎰 SLOT OÝNA")]],
                 resize_keyboard=True,
                 one_time_keyboard=False
             )
@@ -1462,11 +1462,11 @@ def main():
             await application.bot.send_message(
                 chat_id=Config.SLOT_CHAT_ID,
                 text=(
-                    "🎰 <b>SLOT OYUNU AKTİF!</b>\n\n"
-                    "🎯 Aşagdaky düýmä basyň we şansyny synanyşyň!\n"
-                    "🎁 777 tapsaňyz: <b>+10 💎</b>\n"
-                    "😢 Tapmasaňyz: <b>-5 💎</b>\n\n"
-                    "🍀 Şans şu sada!"
+                    "🎰 <b>SLOT OÝUNY IŞLEÝÄR!</b>\n\n"
+                    "🎯 Aşakdaky düwmä basyň we şansyny barlaň!\n"
+                    "🎁 777 tapsaňyz: <b>+5 💎</b>\n"
+                    "😢 Tapmasaňyz: <b>-2 💎</b>\n\n"
+                    "🍀 Şanslymykaň?!"
                 ),
                 parse_mode="HTML",
                 reply_markup=keyboard
