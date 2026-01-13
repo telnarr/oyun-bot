@@ -11,6 +11,7 @@ import random
 import time
 from collections import Counter
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
 
 # Import from bot_main
@@ -780,6 +781,126 @@ async def play_wheel_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]])
     )
 
+
+
+
+# ============================================================================
+# SLOT OYUNU - YENİ SİSTEM
+# ============================================================================
+
+async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Slot oyunu - Sadece belirli grupta çalışır"""
+    message = update.message
+    user_id = message.from_user.id
+    chat_id = message.chat_id
+
+    # Sadece belirli grupta oynansın
+    if str(chat_id) != str(Config.SLOT_CHAT_ID):
+        return
+
+    # Aktivite güncelle
+    db.update_last_activity(user_id)
+
+    # Kullanıcı bilgilerini al
+    user_data = db.get_user(user_id)
+
+    if not user_data:
+        await message.reply_text(
+            "⚠️ İlk önce botu başlatmalısınız: /start",
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    balance = user_data['diamond']
+
+    # Bakiye kontrolü (0'ın altına inemez)
+    if balance < 0:
+        await message.reply_text(
+            f"❌ <b>Bakiyeňiz ýeterlik däl!</b>\n"
+            f"💎 Häzirki balans: <b>{balance:.1f} diamond</b>\n\n"
+            f"💡 Diamond gazanmak üçin bota giriň!",
+            parse_mode="HTML",
+            reply_to_message_id=message.message_id
+        )
+        return
+
+    # Animasyon başlat
+    animation_msg = await message.reply_text(
+        "🎰 <b>SLOT çarh aýlanýar...</b>",
+        parse_mode="HTML",
+        reply_to_message_id=message.message_id
+    )
+
+    # Slot emojileri (sadece 7 ve meyveler)
+    slot_symbols = ["🍒", "🍋", "🍊", "🍉", "🍇", "7️⃣"]
+
+    # Animasyon frameleri (hızlı değişim)
+    for _ in range(8):
+        frame = " ".join([random.choice(slot_symbols) for _ in range(3)])
+        await animation_msg.edit_text(
+            f"🎰 <b>SLOT</b>\n\n"
+            f"[ {frame} ]\n\n"
+            f"💫 Aýlanýar...",
+            parse_mode="HTML"
+        )
+        await asyncio.sleep(0.3)
+
+    # Sonucu belirle - Şans kontrolü
+    is_winner = random.randint(1, 100) <= Config.SLOT_WIN_CHANCE
+
+    if is_winner:
+        # Kazandı - 7️⃣ 7️⃣ 7️⃣
+        result = ["7️⃣", "7️⃣", "7️⃣"]
+        reward = Config.SLOT_WIN_REWARD
+        db.update_diamond(user_id, reward)
+
+        result_text = (
+            f"🎰 <b>SLOT</b>\n\n"
+            f"[ 7️⃣ 7️⃣ 7️⃣ ]\n\n"
+            f"🎉 <b>GUTLAÝARYS!</b>\n"
+            f"💎 Gazanç: <b>+{reward:.1f} diamond</b>\n"
+            f"💰 Täze balans: <b>{balance + reward:.1f} diamond</b>"
+        )
+
+        # Kazananı duyur (opsiyonel)
+        await context.bot.send_message(
+            chat_id=Config.SLOT_CHAT_ID,
+            text=(
+                f"🏆 <b>ÝEŇIJI!</b>\n\n"
+                f"👤 @{message.from_user.username or message.from_user.first_name}\n"
+                f"🎰 777 tapdy!\n"
+                f"💎 Gazanç: <b>+{reward:.1f} diamond</b>"
+            ),
+            parse_mode="HTML"
+        )
+    else:
+        # Kaybetti - Rastgele ama 777 değil
+        # Sadece 7 benzer gelmemeli, diğerleri de benzer olmamalı
+        result = []
+        for _ in range(3):
+            symbol = random.choice(slot_symbols)
+            result.append(symbol)
+
+        # Eğer 3'ü de aynıysa, birini değiştir
+        if result[0] == result[1] == result[2]:
+            result[2] = random.choice([s for s in slot_symbols if s != result[0]])
+
+        reward = Config.SLOT_LOSE_PENALTY
+        db.update_diamond(user_id, reward)
+
+        result_text = (
+            f"🎰 <b>SLOT</b>\n\n"
+            f"[ {' '.join(result)} ]\n\n"
+            f"😢 <b>Gynandyryjy...</b>\n"
+            f"💎 Ýitirilen: <b>{reward} diamond</b>\n"
+            f"💰 Täze balans: <b>{balance + reward:.1f} diamond</b>\n"
+            f"💪 Täzeden synanyşyň!"
+        )
+
+    await animation_msg.edit_text(result_text, parse_mode="HTML")
+
+    # İstatistik kaydet (opsiyonel)
+    # db.log_slot_play(user_id, "".join(result), reward)
 # ============================================================================
 # PARA ÇEKME SİSTEMİ
 # ============================================================================
