@@ -1381,7 +1381,6 @@ async def debug_all_messages(update: Update, context: ContextTypes.DEFAULT_TYPE)
 """
 DÜZELTME: SLOT oyunu için handler sıralaması düzeltildi
 """
-
 def main():
     """Bot'u başlat"""
     logging.basicConfig(
@@ -1394,7 +1393,7 @@ def main():
         button_callback,
         handle_promo_code_input,
         handle_membership_check,
-        play_slot_game  # ✅ BU SATIR EKLENDİ
+        play_slot_game
     )
     from bot_admin import admin_command, handle_mass_post, handle_broadcast_message
 
@@ -1402,9 +1401,7 @@ def main():
 
     # Komutlar
     application.add_handler(CommandHandler("start", start_command))
-    # main() içinde ekleyin:
     application.add_handler(CommandHandler("grupid", grupid_command))
-
 
     # Admin komutları
     application.add_handler(CommandHandler("adddia", admin_command))
@@ -1418,28 +1415,29 @@ def main():
     # Callback handlers
     application.add_handler(CallbackQueryHandler(button_callback))
 
-    # ✅ DEBUG HANDLER - GEÇICI (EN ÖNCE!)
-    application.add_handler(MessageHandler(
-        filters.ALL & ~filters.COMMAND,
-        debug_all_messages
-    ))
-
-    # SLOT HANDLER
+    # ⚠️ ÖNEMLİ: SLOT HANDLER EN ÖNCE OLMALI!
     application.add_handler(MessageHandler(
         filters.TEXT & filters.Regex("^🎰 SLOT OYNA$") & ~filters.COMMAND,
         play_slot_game
     ))
 
+    # Medya handler'lar (broadcast ve mass post için)
     application.add_handler(MessageHandler(
         (filters.PHOTO | filters.VIDEO | filters.Document.ALL) & ~filters.COMMAND,
         handle_combined_media
     ))
 
-    # Text handler
+    # Text handler (promo kod ve broadcast için)
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         handle_combined_text
     ))
+
+    # ✅ DEBUG HANDLER - EN SONA TAŞINDI (geliştirme bittikten sonra silebilirsiniz)
+    # application.add_handler(MessageHandler(
+    #     filters.ALL & ~filters.COMMAND,
+    #     debug_all_messages
+    # ))
 
     # İnaktivite kontrol job
     async def background_inactivity_check():
@@ -1467,7 +1465,7 @@ def main():
                     "🎰 <b>SLOT OYUNU AKTİF!</b>\n\n"
                     "🎯 Aşagdaky düýmä basyň we şansyny synanyşyň!\n"
                     "🎁 777 tapsaňyz: <b>+10 💎</b>\n"
-                    "💔 Tapmasaňyz: <b>-5 💎</b>\n\n"
+                    "😢 Tapmasaňyz: <b>-5 💎</b>\n\n"
                     "🍀 Şans şu sada!"
                 ),
                 parse_mode="HTML",
@@ -1481,12 +1479,14 @@ def main():
         asyncio.create_task(background_inactivity_check())
         await setup_slot_button(application)
         logging.info("✅ İnaktivite kontrol sistemi başlatıldı")
+        logging.info("✅ SLOT oyunu aktif - Handler sıralaması düzeltildi!")
 
     application.post_init = on_startup
 
     print("🤖 Bot başladı...")
     print("🎰 SLOT oyunu aktif!")
-    print(f"📍 SLOT grubu: {Config.SLOT_CHAT_ID}")
+    print(f"🔍 SLOT grubu: {Config.SLOT_CHAT_ID}")
+    print("⚠️  Handler sıralaması düzeltildi - SLOT artık çalışmalı!")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
