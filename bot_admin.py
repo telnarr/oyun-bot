@@ -714,27 +714,132 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ============================================================================
 
 async def admin_broadcast_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Broadcast menüsü"""
+    """Broadcast menüsü - Güncellenmiş"""
     query = update.callback_query
 
     text = (
         "📣 <b>Hemmeler Habar Ugratmak</b>\n\n"
-        "Ähli ulanyjylara habar ugratmak üçin:\n"
-        "/broadcast Siziň habaryňyz\n\n"
-        "⚠️ Bu ähli ulanyjylara iberiler!\n\n"
-        "💡 <b>Giňişleýin format:</b>\n"
-        "Mesaj içinde satır atlamalary we boşluklar korunur.\n"
-        "HTML formatı desteklenir:\n"
-        "<b>bold</b>, <i>italic</i>, <code>code</code>"
+        "Ähli ulanyjylara habar ugratmak üçin:\n\n"
+        "1️⃣ Bu menüden sonra görsel veya yazı gönderin\n"
+        "2️⃣ Bot otomatik olarak tüm kullanıcılara gönderecek\n\n"
+        "⚠️ <b>Önemli:</b>\n"
+        "• Resim, video, dosya veya sadece yazı gönderebilirsiniz\n"
+        "• HTML format desteklenir: <b>bold</b>, <i>italic</i>\n"
+        "• İptal etmek için /cancel yazın\n\n"
+        "✅ Hazır olduğunuzda mesajınızı gönderin!"
     )
+
+    # Kullanıcıyı bekleme moduna al
+    context.user_data['waiting_for_broadcast'] = True
 
     await query.edit_message_text(
         text,
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_panel")
+            InlineKeyboardButton("📙 İptal", callback_data="admin_panel")
         ]])
     )
+
+
+async def handle_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Broadcast işle - Güncellenmiş görsel destekli"""
+    # Güvenli kontrol - context.user_data None olabilir
+    if not context.user_data:
+        return
+
+    if not context.user_data.get('waiting_for_broadcast'):
+        return
+
+    user_id = update.effective_user.id
+
+    # Admin kontrolü
+    if user_id not in Config.ADMIN_IDS:
+        return
+
+    # Bekleme modunu kapat
+    context.user_data['waiting_for_broadcast'] = False
+
+    # Tüm kullanıcıları al
+    users = db.get_all_user_ids()
+
+    success_count = 0
+    failed_count = 0
+
+    status_msg = await update.message.reply_text(
+        "📣 <b>Habar iberilýär...</b>\n\n"
+        "⏳ Lütfen bekleyin...",
+        parse_mode="HTML"
+    )
+
+    for user_id in users:
+        try:
+            # Mesajı kullanıcılara gönder
+            if update.message.photo:
+                # Fotoğraflı mesaj
+                photo = update.message.photo[-1]  # En yüksek kalite
+                caption = update.message.caption or ""
+                await context.bot.send_photo(
+                    chat_id=user_id,
+                    photo=photo.file_id,
+                    caption=f"📢 <b>Habar:</b>\n\n{caption}",
+                    parse_mode="HTML"
+                )
+            elif update.message.video:
+                # Videolu mesaj
+                video = update.message.video
+                caption = update.message.caption or ""
+                await context.bot.send_video(
+                    chat_id=user_id,
+                    video=video.file_id,
+                    caption=f"📢 <b>Habar:</b>\n\n{caption}",
+                    parse_mode="HTML"
+                )
+            elif update.message.document:
+                # Dosya
+                document = update.message.document
+                caption = update.message.caption or ""
+                await context.bot.send_document(
+                    chat_id=user_id,
+                    document=document.file_id,
+                    caption=f"📢 <b>Habar:</b>\n\n{caption}",
+                    parse_mode="HTML"
+                )
+            elif update.message.animation:
+                # GIF/Animasyon
+                animation = update.message.animation
+                caption = update.message.caption or ""
+                await context.bot.send_animation(
+                    chat_id=user_id,
+                    animation=animation.file_id,
+                    caption=f"📢 <b>Habar:</b>\n\n{caption}",
+                    parse_mode="HTML"
+                )
+            else:
+                # Sadece yazı
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=f"📢 <b>Habar:</b>\n\n{update.message.text}",
+                    parse_mode="HTML"
+                )
+
+            success_count += 1
+            await asyncio.sleep(0.05)  # Rate limit için bekleme
+
+        except Exception as e:
+            failed_count += 1
+            logging.error(f"Broadcast hatası user {user_id}: {e}")
+
+    # Sonuç mesajı
+    result_text = (
+        f"📣 <b>Habar Ugradyldy!</b>\n\n"
+        f"✅ Üstünlikli: <b>{success_count}</b> ulanyjy\n"
+        f"❌ Başartmady: <b>{failed_count}</b> ulanyjy\n\n"
+    )
+
+    if failed_count > 0:
+        result_text += f"⚠️ Käbir ulanyjylara ýetişip bolmady (bloklan/öçürilen hasaplar)"
+
+    await status_msg.edit_text(result_text, parse_mode="HTML")
 
 # ============================================================================
 # TOPLU POST - YENİ ÖZELLİK
@@ -880,13 +985,13 @@ async def handle_mass_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await status_msg.edit_text(result_text, parse_mode="HTML")
 
-    
+
 # ============================================================================
 # ADMİN KOMUTLARI
 # ============================================================================
 
 async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin komutları"""
+    """Admin komutları - Broadcast komutu kaldırıldı"""
     user_id = update.effective_user.id
 
     if user_id not in Config.ADMIN_IDS:
@@ -903,7 +1008,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.update_diamond(target_user, amount)
 
             await update.message.reply_text(
-                f"✅ {target_user} ID-li ulanyjynyň hasabyna {amount:.1f} 💎 goşuldy!"
+                f"✅ {target_user} ID-li ulanyјynyň hasabyna {amount:.1f} 💎 goşuldy!"
             )
         except:
             await update.message.reply_text("❌ Nädogry format! /adddia 123456789 10.5")
@@ -917,7 +1022,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.update_diamond(target_user, -amount)
 
             await update.message.reply_text(
-                f"✅ {target_user} ID-li ulanyjynyň hasabyndan {amount:.1f} 💎 aýyryldy!"
+                f"✅ {target_user} ID-li ulanyјynyň hasabyndan {amount:.1f} 💎 aýyryldy!"
             )
         except:
             await update.message.reply_text("❌ Nädogry format! /remdia 123456789 5.5")
@@ -958,7 +1063,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"✅ Promo kod döredildi!\n\n"
                     f"🎟 Kod: <code>{code}</code>\n"
                     f"💎 Mukdar: {diamond:.1f}\n"
-                    f"📢 Ulanyş sany: {max_uses}",
+                    f"🔢 Ulanyş sany: {max_uses}",
                     parse_mode="HTML"
                 )
             else:
@@ -966,7 +1071,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             await update.message.reply_text("❌ Nädogry format! /createpromo KOD 10.5 100")
 
-    # Sponsor ekleme - GELİŞTİRİLMİŞ
+    # Sponsor ekleme
     elif command == "addsponsor":
         try:
             channel_id = context.args[0]
@@ -1007,45 +1112,23 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="HTML"
             )
 
-    # Broadcast
-    elif command == "broadcast":
+    # Ban user
+    elif command == "banuser":
         try:
-            # Mesajın tamamını al (komut hariç)
-            message_parts = update.message.text.split(maxsplit=1)
-            if len(message_parts) < 2:
-                await update.message.reply_text("❌ Habar ýazyň!")
-                return
+            target_user = int(context.args[0])
+            db.ban_user(target_user)
+            await update.message.reply_text(f"✅ {target_user} ID-li ulanyjy ban edildi!")
+        except:
+            await update.message.reply_text("❌ Nädogry format! /banuser 123456789")
 
-            message = message_parts[1]
-
-            users = db.get_all_user_ids()
-
-            success = 0
-            failed = 0
-
-            status_msg = await update.message.reply_text("📣 Habar iberilýär...")
-
-            for user_id in users:
-                try:
-                    # Mesajı olduğu gibi gönder
-                    await context.bot.send_message(
-                        chat_id=user_id,
-                        text=f"📢 <b>Habar:</b>\n\n{message}",
-                        parse_mode="HTML"
-                    )
-                    success += 1
-                    await asyncio.sleep(0.05)
-                except Exception as e:
-                    failed += 1
-                    logging.error(f"Broadcast hatası user {user_id}: {e}")
-
-            await status_msg.edit_text(
-                f"✅ Habar ugradyldy!\n\n"
-                f"✔ Üstünlikli: {success}\n"
-                f"✗ Başartmady: {failed}"
-            )
-        except Exception as e:
-            await update.message.reply_text(f"❌ Çalşyşlyk: {e}")
+    # Unban user
+    elif command == "unbanuser":
+        try:
+            target_user = int(context.args[0])
+            db.unban_user(target_user)
+            await update.message.reply_text(f"✅ {target_user} ID-li ulanyjynyň bany aýyryldy!")
+        except:
+            await update.message.reply_text("❌ Nädogry format! /unbanuser 123456789")
 
     # Para çekme onaylama
     elif command == "approve":
@@ -1132,7 +1215,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"📋 Talap №: {request_id}\n"
                         f"💎 Mukdar: {request['diamond_amount']:.1f} diamond\n\n"
                         f"🔄 Diamond hasabyňyzda galýar.\n"
-                        f"📞 Soraglar üçin admin bilen habarlaşyň: @alpen_silver"
+                        f"📞 Soraglar üçin admin bilen habarlaşyň: @dekanaska"
                     ),
                     parse_mode="HTML"
                 )
