@@ -84,6 +84,12 @@ class Config:
     WHEEL_REWARDS = [0, 2, 4, 5, 6, 3, -2, -3]  # Olası sonuçlar
     WHEEL_WEIGHTS = [25, 10, 5, 4, 1, 8, 25, 25]  # Her sonucun çıkma olasılığı (ağırlık)
 
+    # ========== SLOT OYUNU AYARLARI - YENİ ==========
+    SLOT_CHAT_ID = "@igrolab_chat"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
+    SLOT_WIN_REWARD = 10.0  # Kazanınca alınan diamond (777)
+    SLOT_LOSE_PENALTY = -5.0  # Kaybedince düşen diamond
+    SLOT_WIN_CHANCE = 15  # Kazanma şansı (%)
+
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat (saniye cinsinden)
@@ -339,6 +345,16 @@ class Database:
                 is_banned BOOLEAN DEFAULT FALSE,
                 last_task_reset BIGINT DEFAULT 0,
                 last_activity BIGINT DEFAULT 0
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS slot_history (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT,
+                result TEXT,
+                reward NUMERIC(10, 2),
+                play_date BIGINT
             )
         """)
 
@@ -940,6 +956,23 @@ class Database:
             "total_withdrawn": float(total_withdrawn)
         }
 
+    def log_slot_play(self, user_id: int, result: str, reward: float):
+        """Slot oyunu kaydını tut (opsiyonel - istatistik için)"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO slot_history (user_id, result, reward, play_date)
+                VALUES (%s, %s, %s, %s)
+            """, (user_id, result, reward, int(time.time())))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"Slot log hatası: {e}")
+        finally:
+            cursor.close()
+            self.return_connection(conn)
+
 # Global database instance
 db = Database()
 
@@ -1322,7 +1355,8 @@ def main():
     from bot_handlers import (
         button_callback,
         handle_promo_code_input,
-        handle_membership_check
+        handle_membership_check,
+        play_slot_game
     )
     from bot_admin import admin_command, handle_mass_post, handle_broadcast_message
 
@@ -1351,6 +1385,11 @@ def main():
         handle_combined_media  # Yeni birleşik handler
     ))
 
+    application.add_handler(MessageHandler(
+        filters.TEXT & filters.Regex("^🎰 SLOT OÝNA$") & ~filters.COMMAND,
+        play_slot_game
+    ))
+
     # Sonra text handler (promo kod + broadcast için)
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
@@ -1369,10 +1408,36 @@ def main():
                 logging.error(f"Background inactivity check hatası: {e}")
                 await asyncio.sleep(3600)  # Hata durumunda 1 saat bekle
 
+    async def setup_slot_button(application):
+        """SLOT grubuna buton gönder"""
+        try:
+            keyboard = ReplyKeyboardMarkup(
+                [[KeyboardButton("🎰 SLOT OYNA")]],
+                resize_keyboard=True,
+                one_time_keyboard=False
+            )
+
+            await application.bot.send_message(
+                chat_id=Config.SLOT_CHAT_ID,
+                text=(
+                    "🎰 <b>SLOT OYUNU AKTİF!</b>\n\n"
+                    "🎯 Aşagdaky düýmä basyň we şansyny synanyşyň!\n"
+                    "🎁 777 tapsaňyz: <b>+10 💎</b>\n"
+                    "💔 Tapmasaňyz: <b>-5 💎</b>\n\n"
+                    "🍀 Şans şu sada!"
+                ),
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        except Exception as e:
+            logging.error(f"Slot button kurulum hatası: {e}")
+
+
     # Background task'ı başlat
     async def on_startup(application):
         """Bot başladığında çalışır"""
         asyncio.create_task(background_inactivity_check())
+        await setup_slot_button(application)
         logging.info("✅ İnaktivite kontrol sistemi başlatıldı")
 
     application.post_init = on_startup
