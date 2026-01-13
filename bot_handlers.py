@@ -788,6 +788,10 @@ async def play_wheel_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # SLOT OYUNU - YENİ SİSTEM
 # ============================================================================
 
+# ============================================================================
+# SLOT OYUNU - DÜZELTİLMİŞ VERSİYON
+# ============================================================================
+
 async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Slot oyunu - Sadece belirli grupta çalışır"""
     message = update.message
@@ -798,7 +802,7 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if str(chat_id) != str(Config.SLOT_CHAT_ID):
         return
 
-    # Aktivite güncelle
+    # ✅ AKTİVİTE GÜNCELLE - EKLENDİ
     db.update_last_activity(user_id)
 
     # Kullanıcı bilgilerini al
@@ -832,17 +836,20 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # Slot emojileri (sadece 7 ve meyveler)
-    slot_symbols = ["🍒", "🍋", "🍊", "🍉", "🍇", "7️⃣"]
+    slot_symbols = ["🍎", "🍋", "🍊", "🍉", "🍇", "7️⃣"]
 
     # Animasyon frameleri (hızlı değişim)
     for _ in range(8):
         frame = " ".join([random.choice(slot_symbols) for _ in range(3)])
-        await animation_msg.edit_text(
-            f"🎰 <b>SLOT</b>\n\n"
-            f"[ {frame} ]\n\n"
-            f"💫 Aýlanýar...",
-            parse_mode="HTML"
-        )
+        try:
+            await animation_msg.edit_text(
+                f"🎰 <b>SLOT</b>\n\n"
+                f"[ {frame} ]\n\n"
+                f"💫 Aýlanýar...",
+                parse_mode="HTML"
+            )
+        except:
+            pass  # Rate limit hatalarını yoksay
         await asyncio.sleep(0.3)
 
     # Sonucu belirle - Şans kontrolü
@@ -863,19 +870,21 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # Kazananı duyur (opsiyonel)
-        await context.bot.send_message(
-            chat_id=Config.SLOT_CHAT_ID,
-            text=(
-                f"🏆 <b>ÝEŇIJI!</b>\n\n"
-                f"👤 @{message.from_user.username or message.from_user.first_name}\n"
-                f"🎰 777 tapdy!\n"
-                f"💎 Gazanç: <b>+{reward:.1f} diamond</b>"
-            ),
-            parse_mode="HTML"
-        )
+        try:
+            await context.bot.send_message(
+                chat_id=Config.SLOT_CHAT_ID,
+                text=(
+                    f"🏆 <b>ÝEŇIJI!</b>\n\n"
+                    f"👤 @{message.from_user.username or message.from_user.first_name}\n"
+                    f"🎰 777 tapdy!\n"
+                    f"💎 Gazanç: <b>+{reward:.1f} diamond</b>"
+                ),
+                parse_mode="HTML"
+            )
+        except:
+            pass
     else:
         # Kaybetti - Rastgele ama 777 değil
-        # Sadece 7 benzer gelmemeli, diğerleri de benzer olmamalı
         result = []
         for _ in range(3):
             symbol = random.choice(slot_symbols)
@@ -897,7 +906,11 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💪 Täzeden synanyşyň!"
         )
 
-    await animation_msg.edit_text(result_text, parse_mode="HTML")
+    try:
+        await animation_msg.edit_text(result_text, parse_mode="HTML")
+    except:
+        # Eğer edit başarısız olursa yeni mesaj gönder
+        await message.reply_text(result_text, parse_mode="HTML")
 
     # İstatistik kaydet (opsiyonel)
     # db.log_slot_play(user_id, "".join(result), reward)
