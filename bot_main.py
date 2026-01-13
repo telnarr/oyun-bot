@@ -1344,6 +1344,12 @@ async def handle_combined_text(update: Update, context: ContextTypes.DEFAULT_TYP
 # MAIN
 # ============================================================================
 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+DÜZELTME: SLOT oyunu için handler sıralaması düzeltildi
+"""
+
 def main():
     """Bot'u başlat"""
     logging.basicConfig(
@@ -1356,7 +1362,7 @@ def main():
         button_callback,
         handle_promo_code_input,
         handle_membership_check,
-        play_slot_game
+        play_slot_game  # ✅ BU SATIR EKLENDİ
     )
     from bot_admin import admin_command, handle_mass_post, handle_broadcast_message
 
@@ -1365,39 +1371,37 @@ def main():
     # Komutlar
     application.add_handler(CommandHandler("start", start_command))
 
-    # Admin komutları (/broadcast KALDIRILDI - artık buton bazlı)
+    # Admin komutları
     application.add_handler(CommandHandler("adddia", admin_command))
     application.add_handler(CommandHandler("remdia", admin_command))
     application.add_handler(CommandHandler("userinfo", admin_command))
     application.add_handler(CommandHandler("createpromo", admin_command))
     application.add_handler(CommandHandler("addsponsor", admin_command))
-    # application.add_handler(CommandHandler("broadcast", admin_command))  # BU SATIRI SİLİN veya YORUM SATIRINA ALIN
     application.add_handler(CommandHandler("approve", admin_command))
     application.add_handler(CommandHandler("reject", admin_command))
 
     # Callback handlers
     application.add_handler(CallbackQueryHandler(button_callback))
 
-    # BROADCAST VE TOPLU POST HANDLER'LARI (ÖNCE - sıralama önemli!)
-    # Önce broadcast ve mass post için medya handler'ları
+    # ✅ ÖNEMLİ: SLOT HANDLER EN ÖNCE OLMALI!
     application.add_handler(MessageHandler(
-        (filters.PHOTO | filters.VIDEO | filters.Document.ALL) & ~filters.COMMAND,
-        handle_combined_media  # Yeni birleşik handler
-    ))
-
-    application.add_handler(MessageHandler(
-        filters.TEXT & filters.Regex("^🎰 SLOT OÝNA$") & ~filters.COMMAND,
+        filters.TEXT & filters.Regex("^🎰 SLOT OYNA$") & ~filters.COMMAND,
         play_slot_game
     ))
 
-    # Sonra text handler (promo kod + broadcast için)
+    # Broadcast ve mass post için medya handler'ları (SLOT'tan sonra)
     application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
-        handle_combined_text  # Yeni birleşik handler
+        (filters.PHOTO | filters.VIDEO | filters.Document.ALL) & ~filters.COMMAND,
+        handle_combined_media
     ))
 
-    # İNAKTİVİTE KONTROL JOB - YENİ (JobQueue olmadan)
-    # Background task'ı ayrı thread'de çalıştır
+    # Text handler (promo kod + broadcast için) - EN SON
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        handle_combined_text
+    ))
+
+    # İnaktivite kontrol job
     async def background_inactivity_check():
         """İnaktivite kontrolünü periyodik olarak çalıştır"""
         while True:
@@ -1406,7 +1410,7 @@ def main():
                 await check_and_penalize_inactive_users(application)
             except Exception as e:
                 logging.error(f"Background inactivity check hatası: {e}")
-                await asyncio.sleep(3600)  # Hata durumunda 1 saat bekle
+                await asyncio.sleep(3600)
 
     async def setup_slot_button(application):
         """SLOT grubuna buton gönder"""
@@ -1432,8 +1436,6 @@ def main():
         except Exception as e:
             logging.error(f"Slot button kurulum hatası: {e}")
 
-
-    # Background task'ı başlat
     async def on_startup(application):
         """Bot başladığında çalışır"""
         asyncio.create_task(background_inactivity_check())
@@ -1442,12 +1444,9 @@ def main():
 
     application.post_init = on_startup
 
-    print("🤖 Bot başlady...")
-    print("📣 Yeni broadcast sistemi aktif: Buton bazlı mesaj gönderimi")
-    print("📮 Toplu post sistemi aktif: Sponsor kanallara post gönderimi")
-    print(f"⏰ İnaktivite kontrolü aktif: {Config.INACTIVITY_TIME} saniye ({Config.INACTIVITY_TIME/3600:.1f} saat)")
-    print(f"💎 İnaktivite cezası: {Config.INACTIVITY_PENALTY} diamond")
-    print(f"🔄 Kontrol periyodu: Her 6 saatte bir")
+    print("🤖 Bot başladı...")
+    print("🎰 SLOT oyunu aktif!")
+    print(f"📍 SLOT grubu: {Config.SLOT_CHAT_ID}")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
