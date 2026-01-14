@@ -308,6 +308,30 @@ class Database:
                 conn.rollback()
                 print(f"ℹ️  sponsors.bot_is_admin güncelleme: {e}")
 
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS daily_stats (
+                        user_id BIGINT,
+                        stat_date DATE,
+                        daily_diamonds_earned NUMERIC(10, 2) DEFAULT 0.0,
+                        daily_referrals_count INTEGER DEFAULT 0,
+                        daily_withdrawn NUMERIC(10, 2) DEFAULT 0.0,
+                        PRIMARY KEY (user_id, stat_date)
+                    )
+                """)
+                conn.commit()
+                cursor.close()
+                print("✅ daily_stats tablosu oluşturuldu/kontrol edildi")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" in str(e).lower():
+                    print("ℹ️  daily_stats tablosu zaten var")
+                else:
+                    print(f"⚠️  daily_stats: {e}")
+
+
+
             print("✅ Veritabanı migration tamamlandı!")
 
         except Exception as e:
@@ -417,6 +441,18 @@ class Database:
             )
         """)
 
+                # init_db metodunda diğer tabloların altına ekleyin:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_stats (
+                user_id BIGINT,
+                stat_date DATE,
+                daily_diamonds_earned NUMERIC(10, 2) DEFAULT 0.0,
+                daily_referrals_count INTEGER DEFAULT 0,
+                daily_withdrawn NUMERIC(10, 2) DEFAULT 0.0,
+                PRIMARY KEY (user_id, stat_date)
+            )
+        """)
+
         conn.commit()
         cursor.close()
         self.return_connection(conn)
@@ -446,8 +482,6 @@ class Database:
 
         try:
             current_time = int(time.time())
-            # Yeni kullanıcıya başlangıç bonusu ver
-            # YENİ: last_activity eklendi
             cursor.execute("""
                 INSERT INTO users (user_id, username, diamond, referred_by, joined_date, last_task_reset, last_activity)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -462,13 +496,21 @@ class Database:
                     WHERE user_id = %s
                 """, (Config.REFERAL_REWARD, referred_by))
 
+                # ✅ YENİ: Günlük referal istatistiğini güncelle
+                conn.commit()  # Önce commit yap
+                cursor.close()
+                self.return_connection(conn)
+                self.update_daily_referral(referred_by)
+                return
+
             conn.commit()
         except Exception as e:
             conn.rollback()
             logging.error(f"Kullanıcı oluşturma hatası: {e}")
         finally:
-            cursor.close()
-            self.return_connection(conn)
+            if not conn.closed:
+                cursor.close()
+                self.return_connection(conn)
 
     def update_diamond(self, user_id: int, amount: float):
         """Diamond güncelle - Artık ondalıklı sayıları destekler"""
@@ -480,6 +522,10 @@ class Database:
         conn.commit()
         cursor.close()
         self.return_connection(conn)
+
+        # ✅ YENİ: Günlük istatistiği güncelle (sadece pozitif kazançlar için)
+        if amount > 0:
+            self.update_daily_diamonds(user_id, amount)
 
     def get_user_balance(self, user_id: int) -> float:
         """Kullanıcının mevcut bakiyesini getir"""
@@ -885,6 +931,12 @@ class Database:
 
             conn.commit()
 
+            # ✅ YENİ: Günlük çekim istatistiğini güncelle
+            cursor.close()
+            self.return_connection(conn)
+            self.update_daily_withdrawn(user_id, float(diamond_amount))
+            return
+
         cursor.close()
         self.return_connection(conn)
 
@@ -956,6 +1008,123 @@ class Database:
             "total_withdrawn": float(total_withdrawn)
         }
 
+
+    def update_daily_diamonds(self, user_id: int, amount: float):
+        """Günlük kazanılan diamond'ı güncelle"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        today = datetime.now().date()
+
+        cursor.execute("""
+            INSERT INTO daily_stats (user_id, stat_date, daily_diamonds_earned)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (user_id, stat_date)
+            DO UPDATE SET daily_diamonds_earned = daily_stats.daily_diamonds_earned + %s
+        """, (user_id, today, amount, amount))
+
+        conn.commit()
+        cursor.close()
+        self.return_connection(conn)
+
+    def update_daily_referral(self, user_id: int):
+        """Günlük referal sayısını güncelle"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        today = datetime.now().date()
+
+        cursor.execute("""
+            INSERT INTO daily_stats (user_id, stat_date, daily_referrals_count)
+            VALUES (%s, %s, 1)
+            ON CONFLICT (user_id, stat_date)
+            DO UPDATE SET daily_referrals_count = daily_stats.daily_referrals_count + 1
+        """, (user_id, today))
+
+        conn.commit()
+        cursor.close()
+        self.return_connection(conn)
+
+    def update_daily_withdrawn(self, user_id: int, amount: float):
+        """Günlük çekilen miktarı güncelle"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        today = datetime.now().date()
+
+        cursor.execute("""
+            INSERT INTO daily_stats (user_id, stat_date, daily_withdrawn)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (user_id, stat_date)
+            DO UPDATE SET daily_withdrawn = daily_stats.daily_withdrawn + %s
+        """, (user_id, today, amount, amount))
+
+        conn.commit()
+        cursor.close()
+        self.return_connection(conn)
+
+    def get_daily_top_diamonds(self, limit: int = 10) -> List[Dict]:
+        """Günlük en çok diamond kazananlar"""
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        today = datetime.now().date()
+
+        cursor.execute("""
+            SELECT u.user_id, u.username, ds.daily_diamonds_earned
+            FROM daily_stats ds
+            JOIN users u ON ds.user_id = u.user_id
+            WHERE ds.stat_date = %s AND u.is_banned = FALSE
+            ORDER BY ds.daily_diamonds_earned DESC
+            LIMIT %s
+        """, (today, limit))
+
+        results = cursor.fetchall()
+        cursor.close()
+        self.return_connection(conn)
+
+        return [dict(r) for r in results]
+
+    def get_daily_top_referrals(self, limit: int = 10) -> List[Dict]:
+        """Günlük en çok referal getiren kullanıcılar"""
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        today = datetime.now().date()
+
+        cursor.execute("""
+            SELECT u.user_id, u.username, ds.daily_referrals_count
+            FROM daily_stats ds
+            JOIN users u ON ds.user_id = u.user_id
+            WHERE ds.stat_date = %s AND u.is_banned = FALSE
+            ORDER BY ds.daily_referrals_count DESC
+            LIMIT %s
+        """, (today, limit))
+
+        results = cursor.fetchall()
+        cursor.close()
+        self.return_connection(conn)
+
+        return [dict(r) for r in results]
+
+    def get_daily_top_withdrawn(self, limit: int = 10) -> List[Dict]:
+        """Günlük en çok para çekenler"""
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        today = datetime.now().date()
+
+        cursor.execute("""
+            SELECT u.user_id, u.username, ds.daily_withdrawn
+            FROM daily_stats ds
+            JOIN users u ON ds.user_id = u.user_id
+            WHERE ds.stat_date = %s AND u.is_banned = FALSE
+            ORDER BY ds.daily_withdrawn DESC
+            LIMIT %s
+        """, (today, limit))
+
+        results = cursor.fetchall()
+        cursor.close()
+        self.return_connection(conn)
+
+        return [dict(r) for r in results]
+
+
+
     def log_slot_play(self, user_id: int, result: str, reward: float):
         """Slot oyunu kaydını tut (opsiyonel - istatistik için)"""
         conn = self.get_connection()
@@ -972,6 +1141,9 @@ class Database:
         finally:
             cursor.close()
             self.return_connection(conn)
+
+
+
 
 # Global database instance
 db = Database()
@@ -1063,6 +1235,10 @@ def get_main_menu_keyboard(is_admin: bool = False):
         [
             InlineKeyboardButton("💰 Pul çekmek", callback_data="menu_withdraw"),
             InlineKeyboardButton("❓ ÝSS", callback_data="menu_faq")
+        ],
+        # ✅ YENİ: Günlük top kullanıcılar butonu
+        [
+            InlineKeyboardButton("🏆 Günlük Top Ulanyjylar", callback_data="menu_daily_top")
         ]
     ]
 
