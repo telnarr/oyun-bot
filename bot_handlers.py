@@ -10,6 +10,7 @@ import logging
 import random
 import time
 from collections import Counter
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
@@ -91,6 +92,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Sponsor takip
     elif data.startswith("sponsor_check_"):
         await handle_sponsor_check(update, context)
+
+    elif data == "menu_daily_top":
+        await show_daily_top_menu(update, context)
+
+    elif data == "daily_top_diamonds":
+        await show_daily_top_diamonds(update, context)
+
+    elif data == "daily_top_referrals":
+        await show_daily_top_referrals(update, context)
+
+    elif data == "daily_top_withdrawn":
+        await show_daily_top_withdrawn(update, context)
 
     # Promo kod
     elif data == "earn_promo":
@@ -1295,5 +1308,154 @@ async def claim_daily_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
             InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_earn")
+        ]])
+    )
+
+
+# ============================================================================
+# GÜNLÜK TOP KULLANICILAR - YENİ SİSTEM
+# ============================================================================
+
+async def show_daily_top_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Günlük top kullanıcılar ana menüsü"""
+    query = update.callback_query
+
+    today_str = datetime.now().strftime("%d.%m.%Y")
+
+    text = (
+        f"🏆 <b>Günlük Top Ulanyjylar</b>\n"
+        f"📅 Bugün: {today_str}\n\n"
+        f"Haýsy statistikany görmek isleýärsiňiz?\n\n"
+        f"💡 Her gün täze sanaw başlaýar!"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("💎 Iň köp Diamond gazanan", callback_data="daily_top_diamonds")],
+        [InlineKeyboardButton("👥 Iň köp Referal çagyran", callback_data="daily_top_referrals")],
+        [InlineKeyboardButton("💸 Iň köp Pul çeken", callback_data="daily_top_withdrawn")],
+        [InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")]
+    ]
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def show_daily_top_diamonds(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Günlük en çok diamond kazananlar"""
+    query = update.callback_query
+
+    top_users = db.get_daily_top_diamonds(10)
+    today_str = datetime.now().strftime("%d.%m.%Y")
+
+    if not top_users:
+        await query.edit_message_text(
+            f"🏆 <b>Günlük Iň köp Diamond - {today_str}</b>\n\n"
+            f"❌ Häzir hiç hili ulanyjy ýok.\n\n"
+            f"💡 Ilkinji bolup oýunlary oýnaň we sanawda görüniň!",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_daily_top")
+            ]])
+        )
+        return
+
+    text = f"🏆 <b>Günlük Iň köp Diamond - TOP 10</b>\n📅 {today_str}\n\n"
+
+    medals = ["🥇", "🥈", "🥉"]
+    for idx, user in enumerate(top_users, 1):
+        medal = medals[idx-1] if idx <= 3 else f"{idx}."
+        username = f"@{user['username']}" if user['username'] else f"ID: {user['user_id']}"
+        diamonds = float(user['daily_diamonds_earned'])
+
+        text += f"{medal} {username}\n   💎 <b>{diamonds:.1f}</b> diamond\n\n"
+
+    text += "💡 Her gün täze sanaw başlaýar!"
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_daily_top")
+        ]])
+    )
+
+async def show_daily_top_referrals(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Günlük en çok referal getirenler"""
+    query = update.callback_query
+
+    top_users = db.get_daily_top_referrals(10)
+    today_str = datetime.now().strftime("%d.%m.%Y")
+
+    if not top_users:
+        await query.edit_message_text(
+            f"🏆 <b>Günlük Iň köp Referal - {today_str}</b>\n\n"
+            f"❌ Häzir hiç hili ulanyjy ýok.\n\n"
+            f"💡 Ilkinji bolup dostlaryňyzy çagyryň!",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_daily_top")
+            ]])
+        )
+        return
+
+    text = f"🏆 <b>Günlük Iň köp Referal - TOP 10</b>\n📅 {today_str}\n\n"
+
+    medals = ["🥇", "🥈", "🥉"]
+    for idx, user in enumerate(top_users, 1):
+        medal = medals[idx-1] if idx <= 3 else f"{idx}."
+        username = f"@{user['username']}" if user['username'] else f"ID: {user['user_id']}"
+        referrals = user['daily_referrals_count']
+
+        text += f"{medal} {username}\n   👥 <b>{referrals}</b> referal\n\n"
+
+    text += "💡 Her gün täze sanaw başlaýar!"
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_daily_top")
+        ]])
+    )
+
+async def show_daily_top_withdrawn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Günlük en çok para çekenler"""
+    query = update.callback_query
+
+    top_users = db.get_daily_top_withdrawn(10)
+    today_str = datetime.now().strftime("%d.%m.%Y")
+
+    if not top_users:
+        await query.edit_message_text(
+            f"🏆 <b>Günlük Iň köp Çekilen - {today_str}</b>\n\n"
+            f"❌ Häzir hiç hili ulanyjy ýok.\n\n"
+            f"💡 Ilkinji bolup pul çekiň!",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_daily_top")
+            ]])
+        )
+        return
+
+    text = f"🏆 <b>Günlük Iň köp Çekilen - TOP 10</b>\n📅 {today_str}\n\n"
+
+    medals = ["🥇", "🥈", "🥉"]
+    for idx, user in enumerate(top_users, 1):
+        medal = medals[idx-1] if idx <= 3 else f"{idx}."
+        username = f"@{user['username']}" if user['username'] else f"ID: {user['user_id']}"
+        withdrawn = float(user['daily_withdrawn'])
+        manat = withdrawn / Config.DIAMOND_TO_MANAT
+
+        text += f"{medal} {username}\n   💸 <b>{withdrawn:.1f}</b> diamond ({manat:.2f} TMT)\n\n"
+
+    text += "💡 Her gün täze sanaw başlaýar!"
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔙 Yza gaýt", callback_data="menu_daily_top")
         ]])
     )
