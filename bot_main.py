@@ -50,7 +50,7 @@ class Config:
     WITHDRAW_OPTIONS = [30.0, 60.0, 90.0, 120.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
+    REFERAL_REWARD = 2.0  # Referal çağıran kişiye verilecek diamond
     NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
 
     # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
