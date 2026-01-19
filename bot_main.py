@@ -47,7 +47,7 @@ class Config:
     MIN_REFERRAL_COUNT = 10  # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
-    WITHDRAW_OPTIONS = [30.0, 60.0, 90.0, 120.0]
+    WITHDRAW_OPTIONS = [40.0, 80.0]
 
     # ========== REFERAL SİSTEMİ ==========
     REFERAL_REWARD = 1.0  # Referal çağıran kişiye verilecek diamond
@@ -1634,8 +1634,8 @@ def main():
                 text=(
                     "🎰 <b>SLOT OÝUNY IŞLEÝÄR!</b>\n\n"
                     "🎯 Aşakdaky düwmä basyň we şansyny barlaň!\n"
-                    "🎉 777 tapsaňyz: <b>+5 💎</b>\n"
-                    "😢 Tapmasaňyz: <b>-2 💎</b>\n\n"
+                    "🎉 777 tapsaňyz: <b>+8 💎</b>\n"
+                    "😢 Tapmasaňyz: <b>-3.5 💎</b>\n\n"
                     "🍀 Şanslymykaň?!"
                 ),
                 parse_mode="HTML",
