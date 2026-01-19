@@ -42,60 +42,60 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     # ========== DİAMOND SİSTEMİ ==========
-    DIAMOND_TO_MANAT = 6.0  # 5 diamond = 1 manat
-    MIN_WITHDRAW_DIAMOND = 30.0  # Minimum çekilebilir diamond
-    MIN_REFERRAL_COUNT = 6  # Para çekmek için minimum referal sayısı
+    DIAMOND_TO_MANAT = 8.0  # 5 diamond = 1 manat
+    MIN_WITHDRAW_DIAMOND = 40.0  # Minimum çekilebilir diamond
+    MIN_REFERRAL_COUNT = 10  # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
     WITHDRAW_OPTIONS = [30.0, 60.0, 90.0, 120.0]
 
     # ========== REFERAL SİSTEMİ ==========
     REFERAL_REWARD = 1.0  # Referal çağıran kişiye verilecek diamond
-    NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
+    NEW_USER_BONUS = 5.0  # Yeni kullanıcıya verilecek başlangıç diamond
 
     # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
     INACTIVITY_TIME = 86400  # 24 saat (saniye cinsinden) - kullanıcı bu süre boyunca aktif değilse ceza alır
-    INACTIVITY_PENALTY = -1.0  # İnaktivite cezası (diamond olarak)
+    INACTIVITY_PENALTY = -1.5  # İnaktivite cezası (diamond olarak)
 
     # ========== OYUN AYARLARI ==========
     # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
 
     # Almayı Tap Oyunu
     APPLE_BOX_COST = 0.0  # Giriş ücreti (0 = bedava)
-    APPLE_BOX_WIN_REWARD = 1.0  # Kazanınca alınan diamond
-    APPLE_BOX_LOSE_PENALTY = -1.0  # Kaybedince düşen diamond
+    APPLE_BOX_WIN_REWARD = 2.0  # Kazanınca alınan diamond
+    APPLE_BOX_LOSE_PENALTY = -1.5  # Kaybedince düşen diamond
     APPLE_BOX_WIN_CHANCE = 40  # Kazanma şansı (%)
 
     # Lotereýa (Çeňil) - Kolay Scratch
     SCRATCH_EASY_COST = 0.0
-    SCRATCH_EASY_WIN_REWARD = 1.0
-    SCRATCH_EASY_LOSE_PENALTY = -1.0
+    SCRATCH_EASY_WIN_REWARD = 2.0
+    SCRATCH_EASY_LOSE_PENALTY = -1.5
     SCRATCH_EASY_WIN_CHANCE = 60  # %60 kazanma şansı
 
     # Lotereýa (Kyn) - Zor Scratch
     SCRATCH_HARD_COST = 0.0
-    SCRATCH_HARD_WIN_REWARD = 3.0
-    SCRATCH_HARD_LOSE_PENALTY = -1.0
+    SCRATCH_HARD_WIN_REWARD = 4.0
+    SCRATCH_HARD_LOSE_PENALTY = -2.0
     SCRATCH_HARD_WIN_CHANCE = 25  # %25 kazanma şansı
 
     # Şansly Aýlaw - Çarkıfelek
     WHEEL_COST = 0.0  # Her zaman bedava
     # Çarkıfelek ödülleri ve olasılıkları
-    WHEEL_REWARDS = [0, 2, 4, 5, 6, 3, -2, -3]  # Olası sonuçlar
+    WHEEL_REWARDS = [0, 2, 5, 6, 8, 3, -2, -3]  # Olası sonuçlar
     WHEEL_WEIGHTS = [25, 10, 5, 4, 1, 8, 25, 25]  # Her sonucun çıkma olasılığı (ağırlık)
 
     # ========== SLOT OYUNU AYARLARI - YENİ ==========
     SLOT_CHAT_ID = "-1002550606779"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
-    SLOT_WIN_REWARD = 5.0  # Kazanınca alınan diamond (777)
-    SLOT_LOSE_PENALTY = -2.0  # Kaybedince düşen diamond
-    SLOT_WIN_CHANCE = 18  # Kazanma şansı (%)
+    SLOT_WIN_REWARD = 8.0  # Kazanınca alınan diamond (777)
+    SLOT_LOSE_PENALTY = -3.5  # Kaybedince düşen diamond
+    SLOT_WIN_CHANCE = 15  # Kazanma şansı (%)
 
     # ========== BONUS AYARLARI ==========
-    DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
+    DAILY_BONUS_AMOUNT = 1.5  # Günlük bonus miktarı
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat (saniye cinsinden)
 
     # ========== MİNİMUM BAKİYE KONTROLÜ ==========
-    MIN_BALANCE_TO_PLAY = 0.0  # Oyun oynamak için minimum bakiye
+    MIN_BALANCE_TO_PLAY = 1.0  # Oyun oynamak için minimum bakiye
     # Not: Oyunlar bedava olsa bile kullanıcının bakiyesi ekside olamaz
 
     # ========== SPONSOR TÜRÜ ==========
@@ -1575,7 +1575,7 @@ def main():
 
     application = Application.builder().token(Config.BOT_TOKEN).build()
 
-    # Komutlar
+    # ============ KOMUTLAR ============
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("grupid", grupid_command))
 
@@ -1609,61 +1609,52 @@ def main():
         handle_combined_text
     ))
 
-    # ✅ DEBUG HANDLER - EN SONA TAŞINDI (geliştirme bittikten sonra silebilirsiniz)
-    # application.add_handler(MessageHandler(
-    #     filters.ALL & ~filters.COMMAND,
-    #     debug_all_messages
-    # ))
+    # ============ İNAKTİVİTE KONTROLÜ ============
+    async def inactivity_job_callback(context: ContextTypes.DEFAULT_TYPE):
+        """Her 6 saatte bir inaktivite kontrolü yap"""
+        await check_and_penalize_inactive_users(context.application)
 
-    # İnaktivite kontrol job
-    async def background_inactivity_check():
-        """İnaktivite kontrolünü periyodik olarak çalıştır"""
-        while True:
-            try:
-                await asyncio.sleep(21600)  # 6 saat bekle
-                await check_and_penalize_inactive_users(application)
-            except Exception as e:
-                logging.error(f"Background inactivity check hatası: {e}")
-                await asyncio.sleep(3600)
+    # İlk kontrolü 1 dakika sonra başlat, sonra her 6 saatte tekrarla
+    application.job_queue.run_repeating(
+        inactivity_job_callback,
+        interval=21600,  # 6 saat (saniye cinsinden)
+        first=60  # İlk çalıştırma 60 saniye sonra
+    )
 
-    async def setup_slot_button(application):
-        """SLOT grubuna buton gönder"""
+    # ============ SLOT BUTONU KURULUMU ============
+    async def setup_slot_on_startup(application):
         try:
             keyboard = ReplyKeyboardMarkup(
                 [[KeyboardButton("🎰 SLOT OÝNA")]],
                 resize_keyboard=True,
                 one_time_keyboard=False
             )
-
             await application.bot.send_message(
                 chat_id=Config.SLOT_CHAT_ID,
                 text=(
                     "🎰 <b>SLOT OÝUNY IŞLEÝÄR!</b>\n\n"
                     "🎯 Aşakdaky düwmä basyň we şansyny barlaň!\n"
-                    "🎁 777 tapsaňyz: <b>+5 💎</b>\n"
+                    "🎉 777 tapsaňyz: <b>+5 💎</b>\n"
                     "😢 Tapmasaňyz: <b>-2 💎</b>\n\n"
                     "🍀 Şanslymykaň?!"
                 ),
                 parse_mode="HTML",
                 reply_markup=keyboard
             )
+            logging.info("✅ SLOT butonu gönderildi")
         except Exception as e:
             logging.error(f"Slot button kurulum hatası: {e}")
 
-    async def on_startup(application):
-        """Bot başladığında çalışır"""
-        asyncio.create_task(background_inactivity_check())
-        await setup_slot_button(application)
-        logging.info("✅ İnaktivite kontrol sistemi başlatıldı")
-        logging.info("✅ SLOT oyunu aktif - Handler sıralaması düzeltildi!")
+    application.post_init = setup_slot_on_startup
 
-    application.post_init = on_startup
-
+    # ============ BOTU BAŞLAT ============
     print("🤖 Bot başladı...")
     print("🎰 SLOT oyunu aktif!")
-    print(f"🔍 SLOT grubu: {Config.SLOT_CHAT_ID}")
-    print("⚠️  Handler sıralaması düzeltildi - SLOT artık çalışmalı!")
+    print(f"📍 SLOT grubu: {Config.SLOT_CHAT_ID}")
+    print("⏰ İnaktivite kontrolü 6 saatte bir çalışacak (ilk kontrol 1 dk sonra)")
+
     application.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 if __name__ == "__main__":
     main()
