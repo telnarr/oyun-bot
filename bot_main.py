@@ -43,15 +43,15 @@ class Config:
 
     # ========== DİAMOND SİSTEMİ ==========
     DIAMOND_TO_MANAT = 3.0  # 5 diamond = 1 manat
-    MIN_WITHDRAW_DIAMOND = 15.0  # Minimum çekilebilir diamond
+    MIN_WITHDRAW_DIAMOND = 30.0  # Minimum çekilebilir diamond
     MIN_REFERRAL_COUNT = 5  # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
-    WITHDRAW_OPTIONS = [15.0, 30.0]
+    WITHDRAW_OPTIONS = [30.0]
 
     # ========== REFERAL SİSTEMİ ==========
     REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
-    NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
+    NEW_USER_BONUS = 2.5  # Yeni kullanıcıya verilecek başlangıç diamond
 
     # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
     INACTIVITY_TIME = 86400  # 24 saat (saniye cinsinden) - kullanıcı bu süre boyunca aktif değilse ceza alır
@@ -62,20 +62,20 @@ class Config:
 
     # Almayı Tap Oyunu
     APPLE_BOX_COST = 0.0  # Giriş ücreti (0 = bedava)
-    APPLE_BOX_WIN_REWARD = 2.0  # Kazanınca alınan diamond
-    APPLE_BOX_LOSE_PENALTY = -1.0  # Kaybedince düşen diamond
+    APPLE_BOX_WIN_REWARD = 1.0  # Kazanınca alınan diamond
+    APPLE_BOX_LOSE_PENALTY = -0.5  # Kaybedince düşen diamond
     APPLE_BOX_WIN_CHANCE = 40  # Kazanma şansı (%)
 
     # Lotereýa (Çeňil) - Kolay Scratch
     SCRATCH_EASY_COST = 0.0
-    SCRATCH_EASY_WIN_REWARD = 2.0
-    SCRATCH_EASY_LOSE_PENALTY = -1.0
+    SCRATCH_EASY_WIN_REWARD = 1.0
+    SCRATCH_EASY_LOSE_PENALTY = -0.5
     SCRATCH_EASY_WIN_CHANCE = 60  # %60 kazanma şansı
 
     # Lotereýa (Kyn) - Zor Scratch
     SCRATCH_HARD_COST = 0.0
     SCRATCH_HARD_WIN_REWARD = 2.0
-    SCRATCH_HARD_LOSE_PENALTY = -1.0
+    SCRATCH_HARD_LOSE_PENALTY = -0.5
     SCRATCH_HARD_WIN_CHANCE = 25  # %25 kazanma şansı
 
     # Şansly Aýlaw - Çarkıfelek
@@ -88,7 +88,7 @@ class Config:
     SLOT_CHAT_ID = "-1002550606779"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
     SLOT_WIN_REWARD = 5.0  # Kazanınca alınan diamond (777)
     SLOT_LOSE_PENALTY = -2.0  # Kaybedince düşen diamond
-    SLOT_WIN_CHANCE = 13  # Kazanma şansı (%)
+    SLOT_WIN_CHANCE = 12  # Kazanma şansı (%)
 
     # ========== BONUS AYARLARI ==========
     DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
