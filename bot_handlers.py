@@ -140,6 +140,41 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("admin_"):
         await handle_admin_callbacks(update, context)
 
+    # Admin diamond reset callbacks
+    elif data == "confirm_reset_diamonds":
+        if user_id in Config.ADMIN_IDS:
+            await query.edit_message_text("⏳ İşlem yapılıyor...")
+
+            affected = db.reset_all_diamonds()
+
+            if affected >= 0:
+                await query.edit_message_text(
+                    f"✅ <b>TAMAMLANDI!</b>\n\n"
+                    f"🔴 {affected} ullanyjynyň diamond bakiýesi 0 edildi!\n\n"
+                    f"📊 Ähli diamond'lar aýryldy.",
+                    parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔙 Admin Panel", callback_data="admin_panel")
+                    ]])
+                )
+            else:
+                await query.edit_message_text(
+                    "❌ Bir hata ýüze çykdy! Log'lara seredip görüň.",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔙 Admin Panel", callback_data="admin_panel")
+                    ]])
+                )
+        else:
+            await query.answer("⛔ Siziň admin wezipaňiz ýok!", show_alert=True)
+
+    elif data == "cancel_reset_diamonds":
+        await query.edit_message_text(
+            "✅ İşlem iptal edildi.",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Admin Panel", callback_data="admin_panel")
+            ]])
+        )
+
 # ============================================================================
 # KANAL TAKİBİ KONTROLÜ - GELİŞTİRİLMİŞ
 # ============================================================================
