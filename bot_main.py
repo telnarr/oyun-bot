@@ -42,20 +42,20 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     # ========== DİAMOND SİSTEMİ ==========
-    DIAMOND_TO_MANAT = 8.0  # 5 diamond = 1 manat
-    MIN_WITHDRAW_DIAMOND = 40.0  # Minimum çekilebilir diamond
-    MIN_REFERRAL_COUNT = 10  # Para çekmek için minimum referal sayısı
+    DIAMOND_TO_MANAT = 3.0  # 5 diamond = 1 manat
+    MIN_WITHDRAW_DIAMOND = 15.0  # Minimum çekilebilir diamond
+    MIN_REFERRAL_COUNT = 5  # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
-    WITHDRAW_OPTIONS = [40.0, 80.0]
+    WITHDRAW_OPTIONS = [15.0, 30.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 1.0  # Referal çağıran kişiye verilecek diamond
-    NEW_USER_BONUS = 5.0  # Yeni kullanıcıya verilecek başlangıç diamond
+    REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
+    NEW_USER_BONUS = 3.0  # Yeni kullanıcıya verilecek başlangıç diamond
 
     # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
     INACTIVITY_TIME = 86400  # 24 saat (saniye cinsinden) - kullanıcı bu süre boyunca aktif değilse ceza alır
-    INACTIVITY_PENALTY = -1.5  # İnaktivite cezası (diamond olarak)
+    INACTIVITY_PENALTY = -1.0  # İnaktivite cezası (diamond olarak)
 
     # ========== OYUN AYARLARI ==========
     # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
@@ -63,35 +63,35 @@ class Config:
     # Almayı Tap Oyunu
     APPLE_BOX_COST = 0.0  # Giriş ücreti (0 = bedava)
     APPLE_BOX_WIN_REWARD = 2.0  # Kazanınca alınan diamond
-    APPLE_BOX_LOSE_PENALTY = -1.5  # Kaybedince düşen diamond
+    APPLE_BOX_LOSE_PENALTY = -1.0  # Kaybedince düşen diamond
     APPLE_BOX_WIN_CHANCE = 40  # Kazanma şansı (%)
 
     # Lotereýa (Çeňil) - Kolay Scratch
     SCRATCH_EASY_COST = 0.0
     SCRATCH_EASY_WIN_REWARD = 2.0
-    SCRATCH_EASY_LOSE_PENALTY = -1.5
+    SCRATCH_EASY_LOSE_PENALTY = -1.0
     SCRATCH_EASY_WIN_CHANCE = 60  # %60 kazanma şansı
 
     # Lotereýa (Kyn) - Zor Scratch
     SCRATCH_HARD_COST = 0.0
-    SCRATCH_HARD_WIN_REWARD = 4.0
-    SCRATCH_HARD_LOSE_PENALTY = -2.0
+    SCRATCH_HARD_WIN_REWARD = 2.0
+    SCRATCH_HARD_LOSE_PENALTY = -1.0
     SCRATCH_HARD_WIN_CHANCE = 25  # %25 kazanma şansı
 
     # Şansly Aýlaw - Çarkıfelek
     WHEEL_COST = 0.0  # Her zaman bedava
     # Çarkıfelek ödülleri ve olasılıkları
-    WHEEL_REWARDS = [0, 2, 5, 6, 8, 3, -2, -3]  # Olası sonuçlar
-    WHEEL_WEIGHTS = [25, 10, 5, 4, 1, 8, 25, 25]  # Her sonucun çıkma olasılığı (ağırlık)
+    WHEEL_REWARDS = [-2, -1, 0, 1, 2, 3, 4, 5, 10]  # Olası sonuçlar
+    WHEEL_WEIGHTS = [28, 32, 15, 12, 6, 3, 2, 1.5, 0.5]  # Her sonucun çıkma olasılığı (ağırlık)
 
     # ========== SLOT OYUNU AYARLARI - YENİ ==========
     SLOT_CHAT_ID = "-1002550606779"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
-    SLOT_WIN_REWARD = 8.0  # Kazanınca alınan diamond (777)
-    SLOT_LOSE_PENALTY = -3.5  # Kaybedince düşen diamond
-    SLOT_WIN_CHANCE = 15  # Kazanma şansı (%)
+    SLOT_WIN_REWARD = 5.0  # Kazanınca alınan diamond (777)
+    SLOT_LOSE_PENALTY = -2.0  # Kaybedince düşen diamond
+    SLOT_WIN_CHANCE = 13  # Kazanma şansı (%)
 
     # ========== BONUS AYARLARI ==========
-    DAILY_BONUS_AMOUNT = 1.5  # Günlük bonus miktarı
+    DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
     DAILY_BONUS_COOLDOWN = 86400  # 24 saat (saniye cinsinden)
 
     # ========== MİNİMUM BAKİYE KONTROLÜ ==========
@@ -1686,9 +1686,9 @@ def main():
                 chat_id=Config.SLOT_CHAT_ID,
                 text=(
                     "🎰 <b>SLOT OÝUNY IŞLEÝÄR!</b>\n\n"
-                    "🎯 Aşakdaky düwmä basyň we şansyny barlaň!\n"
-                    "🎉 777 tapsaňyz: <b>+8 💎</b>\n"
-                    "😢 Tapmasaňyz: <b>-3.5 💎</b>\n\n"
+                    "🎯 Aşakdaky düwmä bas we sloty aýla!\n"
+                    "🎉 777 düşürseň: <b>+5 💎</b>\n"
+                    "😢 Düşmese: <b>-2 💎</b>\n\n"
                     "🍀 Şanslymykaň?!"
                 ),
                 parse_mode="HTML",
