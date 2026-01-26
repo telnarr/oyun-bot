@@ -1008,6 +1008,31 @@ class Database:
             "total_withdrawn": float(total_withdrawn)
         }
 
+    def reset_all_diamonds(self) -> int:
+        """Tüm kullanıcıların diamond bakiyelerini 0'la - Returns: etkilenen kullanıcı sayısı"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Önce kaç kullanıcı etkilenecek sayalım
+            cursor.execute("SELECT COUNT(*) FROM users WHERE diamond != 0")
+            affected_count = cursor.fetchone()[0]
+
+            # Tüm diamond'ları 0'la
+            cursor.execute("UPDATE users SET diamond = 0")
+            conn.commit()
+
+            cursor.close()
+            self.return_connection(conn)
+            return affected_count
+
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"Diamond reset hatası: {e}")
+            cursor.close()
+            self.return_connection(conn)
+            return -1
+
 
     def update_daily_diamonds(self, user_id: int, amount: float):
         """Günlük kazanılan diamond'ı güncelle"""
@@ -1453,6 +1478,32 @@ async def grupid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML"
     )
 
+async def reset_all_diamonds_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Tüm kullanıcıların diamond bakiyelerini sıfırla - ADMIN ONLY"""
+    user_id = update.effective_user.id
+
+    if user_id not in Config.ADMIN_IDS:
+        await update.message.reply_text("⛔ Siziň admin wezipaňiz ýok!")
+        return
+
+    # Onay butonu göster
+    keyboard = [
+        [
+            InlineKeyboardButton("✅ Hawa, ählisini 0 et", callback_data="confirm_reset_diamonds"),
+            InlineKeyboardButton("❌ Ýok, ýatyrmak", callback_data="cancel_reset_diamonds")
+        ]
+    ]
+
+    await update.message.reply_text(
+        "⚠️ <b>DİKKAT!</b>\n\n"
+        "Bu komut ÄHLÄ° ullanyjylaryň diamond balansyny 0 eder!\n\n"
+        "🔴 Bu işlem geri alınmaz!\n"
+        "🔴 Tüm diamond'lar silinecek!\n\n"
+        "Devam etmek istediğinize emin misiniz?",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ana menüyü göster"""
     user = update.effective_user
@@ -1587,6 +1638,7 @@ def main():
     application.add_handler(CommandHandler("addsponsor", admin_command))
     application.add_handler(CommandHandler("approve", admin_command))
     application.add_handler(CommandHandler("reject", admin_command))
+    application.add_handler(CommandHandler("resetdiamonds", reset_all_diamonds_command))
 
     # Callback handlers
     application.add_handler(CallbackQueryHandler(button_callback))
@@ -1620,6 +1672,7 @@ def main():
         interval=21600,  # 6 saat (saniye cinsinden)
         first=60  # İlk çalıştırma 60 saniye sonra
     )
+
 
     # ============ SLOT BUTONU KURULUMU ============
     async def setup_slot_on_startup(application):
