@@ -30,6 +30,7 @@ async def show_admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🗑 Promo kod poz", callback_data="admin_promo_delete")],
         [InlineKeyboardButton("📢 Sponsor Dolandyryş", callback_data="admin_sponsor_menu")],
         [InlineKeyboardButton("📊 Statistika", callback_data="admin_stats")],
+        [InlineKeyboardButton("⚠️ Şüpheli Aktiviteler", callback_data="admin_suspicious")],
         [InlineKeyboardButton("📣 Hemmä habar", callback_data="admin_broadcast")],
         [InlineKeyboardButton("📮 Toplu Post", callback_data="admin_mass_post")],
         [InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")]
@@ -273,7 +274,7 @@ async def admin_top_withdrawn(update: Update, context: ContextTypes.DEFAULT_TYPE
 # ============================================================================
 
 async def admin_withdrawals_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Para çekme talepleri menüsü"""
+    """Para çekme talepleri menüsü - Telefon numarası ve kullanıcıya mesaj butonu"""
     query = update.callback_query
 
     pending_requests = db.get_pending_withdrawals()
@@ -293,10 +294,12 @@ async def admin_withdrawals_menu(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = []
     for req in pending_requests:
+        phone = req.get('phone_number', '—') or '—'
         text += (
             f"📋 №{req['request_id']}\n"
             f"👤 @{req['username']} (ID: {req['user_id']})\n"
-            f"💎 {req['diamond_amount']:.1f} diamond ({req['manat_amount']:.2f} TMT)\n\n"
+            f"💎 {req['diamond_amount']:.1f} diamond ({req['manat_amount']:.2f} TMT)\n"
+            f"📱 Telefon: <code>{phone}</code>\n\n"
         )
 
         keyboard.append([
@@ -309,6 +312,13 @@ async def admin_withdrawals_menu(update: Update, context: ContextTypes.DEFAULT_T
                 callback_data=f"admin_reject_{req['request_id']}"
             )
         ])
+        # "Kullanıcıya Mesaj Gönder" butonu
+        keyboard.append([
+            InlineKeyboardButton(
+                f"💬 №{req['request_id']} Ulanyjya habar",
+                callback_data=f"admin_msg_user_{req['request_id']}_{req['user_id']}"
+            )
+        ])
 
     keyboard.append([InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_panel")])
 
@@ -319,7 +329,7 @@ async def admin_withdrawals_menu(update: Update, context: ContextTypes.DEFAULT_T
     )
 
 async def admin_approve_withdrawal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Para çekme talebini onayla"""
+    """Para çekme talebini onayla - Kullanıcıya tebrik mesajı"""
     query = update.callback_query
     request_id = int(query.data.split("_")[2])
 
@@ -329,40 +339,37 @@ async def admin_approve_withdrawal(update: Update, context: ContextTypes.DEFAULT
         await query.answer("❌ Talap tapylmady ýa-da eýýäm işlenildi!", show_alert=True)
         return
 
-    # Onayla ve diamond'ı düş
     db.approve_withdrawal(request_id)
 
-    # Kullanıcıya bildirim
+    # Kullanıcıya tebrik bildirimi
     try:
         await context.bot.send_message(
             chat_id=request['user_id'],
             text=(
-                f"✅ <b>TALAP TASSYKLANDY!</b>\n\n"
+                f"🎉 <b>GUTLAÝARYS! TALAP TASSYKLANDY!</b>\n\n"
                 f"📋 Talap №: {request_id}\n"
                 f"💎 Mukdar: {request['diamond_amount']:.1f} diamond\n"
                 f"💵 Manat: {request['manat_amount']:.2f} TMT\n\n"
-                f"💰 Diamond hasabyňyzdan düşürildi.\n"
-                f"📞 Admin siz bilen ýakynda habarlaşar."
+                f"✅ Diamond hasabyňyzdan düşürildi.\n"
+                f"💰 Ödeme tiz wagtda geçiriler!\n"
+                f"📞 Soraglar üçin admin bilen habarlaşyň: @alpen_silver"
             ),
             parse_mode="HTML"
         )
     except Exception as e:
         logging.error(f"Kullanıcıya bildirim gönderilemedi: {e}")
 
-    # KANALA BİLDİRİM GÖNDER
+    # Kanala duyuru
     try:
-        announcement_text = (
-            f"✅ <b>Talap Tassyklandy!</b>\n\n"
-            f"📋 Talap №: {request_id}\n"
-            f"👤 Ullanyjy: @{request['username']}\n"
-            f"💎 Mukdar: {request['diamond_amount']:.1f} diamond\n"
-            f"💵 Manat: {request['manat_amount']:.2f} TMT\n\n"
-            f"🎉 Gutlaýarys!"
-        )
-
         await context.bot.send_message(
             chat_id="@diamond_labs",
-            text=announcement_text,
+            text=(
+                f"✅ <b>Talap Tassyklandy!</b>\n\n"
+                f"👤 Ullanyjy: @{request['username']}\n"
+                f"💎 Mukdar: {request['diamond_amount']:.1f} diamond\n"
+                f"💵 Manat: {request['manat_amount']:.2f} TMT\n\n"
+                f"🎉 Gutlaýarys!"
+            ),
             parse_mode="HTML"
         )
     except Exception as e:
@@ -1204,6 +1211,95 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             await update.message.reply_text("❌ Nädogry format! /reject 123")
 
+
+# ============================================================================
+# ŞÜPHELİ AKTİVİTE VE KULLANICIYA MESAJ
+# ============================================================================
+
+async def admin_suspicious_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Şüpheli aktiviteleri listele"""
+    query = update.callback_query
+
+    activities = db.get_recent_suspicious_activities(20)
+
+    if not activities:
+        await query.edit_message_text(
+            "⚠️ <b>Şüpheli Aktiviteler</b>\n\n✅ Häzir şüpheli aktivite ýok.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_panel")
+            ]])
+        )
+        return
+
+    text = "⚠️ <b>Son 20 Şüpheli Aktivite:</b>\n\n"
+    for act in activities[:15]:
+        from datetime import datetime
+        ts = datetime.fromtimestamp(act.get("detected_at", 0)).strftime("%d.%m %H:%M")
+        username = f"@{act['username']}" if act.get("username") else str(act.get("user_id", "?"))
+        text += (
+            f"🔴 <b>{act.get('activity_type', '?')}</b>\n"
+            f"   👤 {username} | 🕐 {ts}\n"
+            f"   📝 {act.get('details', '')}\n\n"
+        )
+
+    await query.edit_message_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔙 Yza gaýt", callback_data="admin_panel")
+        ]])
+    )
+
+async def admin_msg_user_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin kullanıcıya özel mesaj gönderme — başlatma"""
+    query = update.callback_query
+    parts = query.data.split("_")
+    # format: admin_msg_user_{request_id}_{user_id}
+    target_user_id = int(parts[-1])
+    request_id = int(parts[-2])
+
+    context.user_data["admin_msg_target"] = target_user_id
+    context.user_data["admin_msg_request_id"] = request_id
+    context.user_data["waiting_for_admin_msg"] = True
+
+    await query.edit_message_text(
+        f"💬 <b>Ulanyjya habar</b>\n\n"
+        f"📋 Talap №: {request_id}\n"
+        f"👤 User ID: {target_user_id}\n\n"
+        f"Ugratjak habaryňyzy ýazyň:",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("❌ Ýatyr", callback_data="admin_withdrawals")
+        ]])
+    )
+
+async def handle_admin_msg_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin'in kullanıcıya mesaj gönderme işlemini tamamla"""
+    if not context.user_data.get("waiting_for_admin_msg"):
+        return
+
+    user_id = update.effective_user.id
+    if user_id not in Config.ADMIN_IDS:
+        return
+
+    target = context.user_data.get("admin_msg_target")
+    request_id = context.user_data.get("admin_msg_request_id")
+    context.user_data["waiting_for_admin_msg"] = False
+
+    try:
+        await context.bot.send_message(
+            chat_id=target,
+            text=(
+                f"📩 <b>Admin habary (Talap №{request_id}):</b>\n\n"
+                f"{update.message.text}"
+            ),
+            parse_mode="HTML"
+        )
+        await update.message.reply_text(f"✅ Habar {target} ID-li ulanyjya ugradyldy!")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Habar ugradylmady: {e}")
+
 # ============================================================================
 # CALLBACK ROUTER
 # ============================================================================
@@ -1258,6 +1354,8 @@ async def handle_admin_callbacks(update: Update, context: ContextTypes.DEFAULT_T
         await admin_broadcast_menu(update, context)
     elif data == "admin_mass_post":
         await admin_mass_post_menu(update, context)
+    elif data == "admin_suspicious":
+        await admin_suspicious_menu(update, context)
 
     # Action callbacks
     elif data.startswith("admin_approve_"):
@@ -1268,3 +1366,5 @@ async def handle_admin_callbacks(update: Update, context: ContextTypes.DEFAULT_T
         await admin_delete_promo(update, context)
     elif data.startswith("admin_delsponsor_"):
         await admin_delete_sponsor(update, context)
+    elif data.startswith("admin_msg_user_"):
+        await admin_msg_user_start(update, context)
