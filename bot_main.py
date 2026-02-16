@@ -2043,7 +2043,7 @@ def main():
                     "🍒🍒🍒 = <b>+1.0 💎</b>\n"
                     "🍋🍋🍋 = <b>+1.5 💎</b>\n"
                     "7️⃣7️⃣7️⃣ = <b>+5.0 💎 (JACKPOT!)</b>\n\n"
-                    "💡 <b>Ýakyn geçmek:</b> 2 deň + 1 tapawutly = <b>+0.1 💎</b> teselli\n"
+                    "💡 <b>Golaýlasaňyz:</b> 2 deň + 1 tapawutly = <b>+0.1 💎</b> teselli\n"
                     "😢 <b>Ýitirseň:</b> <b>-0.5 💎</b>\n\n"
                     "🍀 Şanslymykaň?!"
                 ),
