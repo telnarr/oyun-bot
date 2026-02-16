@@ -53,7 +53,7 @@ class Config:
 
     # ========== REFERAL SİSTEMİ ==========
     REFERAL_REWARD = 0.5            # Referali çağırana verilen diamond
-    REFERAL_MIN_GAMES = 10          # Ödül aktive olmak için davet edilen kişinin oynaması gereken oyun sayısı (anti-spam)
+    REFERAL_MIN_GAMES = 5          # Ödül aktive olmak için davet edilen kişinin oynaması gereken oyun sayısı (anti-spam)
     NEW_USER_BONUS = 1.5            # Yeni kullanıcıya verilen başlangıç bonusu
 
     # ========== İNAKTİVİTE CEZA SİSTEMİ ==========
