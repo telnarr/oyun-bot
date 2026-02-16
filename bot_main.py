@@ -35,83 +35,104 @@ class Config:
     """Bot yapılandırması - Tüm ayarlar buradan yönetilir"""
 
     # ========== BOT AYARLARI ==========
-    BOT_TOKEN = os.getenv("BOT_TOKEN", "8133082070:AAE1rRGxQ9_Qqx-LZW54WFuFuGEo9FZhhWc")
-    ADMIN_IDS = [7172270461]  # Admin kullanıcı ID'leri
+    # Hassas bilgiler yalnızca .env dosyasından okunur
+    BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+    ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "7172270461").split(",") if x.strip()]
 
     # ========== VERİTABANI ==========
+    # DATABASE_URL yalnızca .env'den gelir — fallback yok
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     # ========== DİAMOND SİSTEMİ ==========
-    DIAMOND_TO_MANAT = 3.0  # 5 diamond = 1 manat
-    MIN_WITHDRAW_DIAMOND = 30.0  # Minimum çekilebilir diamond
-    MIN_REFERRAL_COUNT = 5  # Para çekmek için minimum referal sayısı
+    DIAMOND_TO_MANAT = 3.0          # 3 diamond = 1 manat
+    MIN_WITHDRAW_DIAMOND = 30.0     # Alt limit: 30 diamond (10 manat)
+    MIN_REFERRAL_COUNT = 5          # Para çekmek için minimum referal sayısı
 
     # Para çekme seçenekleri
     WITHDRAW_OPTIONS = [30.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 0.5  # Referal çağıran kişiye verilecek diamond
-    NEW_USER_BONUS = 2.5  # Yeni kullanıcıya verilecek başlangıç diamond
+    REFERAL_REWARD = 0.5            # Referali çağırana verilen diamond
+    REFERAL_MIN_GAMES = 10          # Ödül aktive olmak için davet edilen kişinin oynaması gereken oyun sayısı (anti-spam)
+    NEW_USER_BONUS = 1.5            # Yeni kullanıcıya verilen başlangıç bonusu
 
-    # ========== İNAKTİVİTE CEZA SİSTEMİ - YENİ ==========
-    INACTIVITY_TIME = 86400  # 24 saat (saniye cinsinden) - kullanıcı bu süre boyunca aktif değilse ceza alır
-    INACTIVITY_PENALTY = -1.0  # İnaktivite cezası (diamond olarak)
+    # ========== İNAKTİVİTE CEZA SİSTEMİ ==========
+    INACTIVITY_TIME = 86400         # 24 saat (saniye)
+    INACTIVITY_PENALTY = -1.0       # İnaktivite cezası (diamond)
+
+    # ========== GÜNLÜK KAZANÇ LİMİTİ ==========
+    DAILY_EARN_CAP = 20.0           # Kullanıcının günde kazanabileceği maksimum diamond (0 = sınırsız)
+
+    # ========== KASA HAVUZU (RTP) KONTROLÜ ==========
+    # Toplam dağıtılan / toplam yatırılan > RTP_THRESHOLD ise kazanma ihtimallerini düşür
+    RTP_THRESHOLD = 0.90            # %90 RTP eşiği
+    RTP_WIN_CHANCE_REDUCTION = 10   # Eşik aşıldığında kazanma ihtimalinden düşülecek yüzde puanı
 
     # ========== OYUN AYARLARI ==========
-    # Not: cost = 0 ise oyun bedava, kazanırsa +win_reward, kaybederse -lose_penalty
+    # Sabit kayıp miktarı tüm oyunlar için 0.5 diamond
+    FIXED_LOSE_PENALTY = -0.5
 
     # Almayı Tap Oyunu
-    APPLE_BOX_COST = 0.0  # Giriş ücreti (0 = bedava)
-    APPLE_BOX_WIN_REWARD = 1.0  # Kazanınca alınan diamond
-    APPLE_BOX_LOSE_PENALTY = -0.5  # Kaybedince düşen diamond
-    APPLE_BOX_WIN_CHANCE = 40  # Kazanma şansı (%)
+    APPLE_BOX_COST = 0.0
+    APPLE_BOX_WIN_REWARD = 1.0
+    APPLE_BOX_LOSE_PENALTY = -0.5
+    APPLE_BOX_WIN_CHANCE = 40       # %40 (RTP havuzuna göre dinamik)
 
     # Lotereýa (Çeňil) - Kolay Scratch
     SCRATCH_EASY_COST = 0.0
     SCRATCH_EASY_WIN_REWARD = 1.0
     SCRATCH_EASY_LOSE_PENALTY = -0.5
-    SCRATCH_EASY_WIN_CHANCE = 60  # %60 kazanma şansı
+    SCRATCH_EASY_WIN_CHANCE = 60
 
     # Lotereýa (Kyn) - Zor Scratch
     SCRATCH_HARD_COST = 0.0
     SCRATCH_HARD_WIN_REWARD = 2.0
     SCRATCH_HARD_LOSE_PENALTY = -0.5
-    SCRATCH_HARD_WIN_CHANCE = 25  # %25 kazanma şansı
+    SCRATCH_HARD_WIN_CHANCE = 25
 
     # Şansly Aýlaw - Çarkıfelek
-    WHEEL_COST = 0.0  # Her zaman bedava
-    # Çarkıfelek ödülleri ve olasılıkları
-    WHEEL_REWARDS = [-2, -1, 0, 1, 2, 3, 4, 5, 10]  # Olası sonuçlar
-    WHEEL_WEIGHTS = [28, 32, 15, 12, 6, 3, 2, 1.5, 0.5]  # Her sonucun çıkma olasılığı (ağırlık)
+    WHEEL_COST = 0.0
+    WHEEL_REWARDS = [-2, -1, 0, 1, 2, 3, 4, 5, 10]
+    WHEEL_WEIGHTS = [28, 32, 15, 12, 6, 3, 2, 1.5, 0.5]
 
-    # ========== SLOT OYUNU AYARLARI - YENİ ==========
-    SLOT_CHAT_ID = "-1002550606779"  # Slot oyununun oynandığı grup/kanal ID'si (örn: @diamond_slots veya -1001234567890)
-    SLOT_WIN_REWARD = 5.0  # Kazanınca alınan diamond (777)
-    SLOT_LOSE_PENALTY = -2.0  # Kaybedince düşen diamond
-    SLOT_WIN_CHANCE = 12  # Kazanma şansı (%)
+    # ========== ZAR OYUNU ==========
+    DICE_WIN_MULTIPLIER = 1.8       # Kazanınca yatırdığının 1.8 katını al (%10 kasa avantajı)
+    DICE_LOSE_PENALTY = -0.5        # Kaybedince sabit 0.5 diamond düşer
+
+    # ========== SLOT OYUNU ==========
+    SLOT_CHAT_ID = os.getenv("SLOT_CHAT_ID", "-1002550606779")
+    SLOT_LOSE_PENALTY = -0.5        # Sabit kayıp 0.5 diamond
+    SLOT_WIN_CHANCE = 12            # Temel kazanma şansı (RTP'ye göre dinamik)
+
+    # Slot kombinasyonları: (sembol_listesi, ödül)
+    SLOT_COMBINATIONS = [
+        (["🍒", "🍒", "🍒"], 1.0),   # Kiraz üçlüsü
+        (["🍋", "🍋", "🍋"], 1.5),   # Limon üçlüsü
+        (["7️⃣", "7️⃣", "7️⃣"], 5.0), # Jackpot 777
+    ]
+    SLOT_NEAR_MISS_REWARD = 0.1     # 2 aynı + 1 farklı → teselli ödülü (bakiyeden -0.5 hâlâ düşer)
 
     # ========== BONUS AYARLARI ==========
-    DAILY_BONUS_AMOUNT = 1.0  # Günlük bonus miktarı
-    DAILY_BONUS_COOLDOWN = 86400  # 24 saat (saniye cinsinden)
+    DAILY_BONUS_AMOUNT = 1.0
+    DAILY_BONUS_COOLDOWN = 86400    # 24 saat
 
     # ========== MİNİMUM BAKİYE KONTROLÜ ==========
-    MIN_BALANCE_TO_PLAY = 1.0  # Oyun oynamak için minimum bakiye
-    # Not: Oyunlar bedava olsa bile kullanıcının bakiyesi ekside olamaz
+    MIN_BALANCE_TO_PLAY = 1.0
 
     # ========== SPONSOR TÜRÜ ==========
-    SPONSOR_TYPE_REQUIRED = "required"  # /start için zorunlu kanallar
-    SPONSOR_TYPE_TASK = "task"  # Günlük görev kanalları
+    SPONSOR_TYPE_REQUIRED = "required"
+    SPONSOR_TYPE_TASK = "task"
 
 # ============================================================================
 # VERİTABANI YÖNETİMİ - PostgreSQL
 # ============================================================================
 
 class Database:
-    """PostgreSQL veritabanı yöneticisi - Geliştirilmiş Versiyon"""
+    """PostgreSQL veritabanı yöneticisi - Asenkron uyumlu ThreadedConnectionPool"""
 
     def __init__(self):
-        self.connection_pool = psycopg2.pool.SimpleConnectionPool(
-            1, 20,
+        self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
+            2, 20,
             Config.DATABASE_URL
         )
         self.init_db()
@@ -332,6 +353,106 @@ class Database:
 
 
 
+            # 15. withdrawal_requests.phone_number ekle
+            try:
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE withdrawal_requests ADD COLUMN phone_number TEXT DEFAULT '';")
+                conn.commit()
+                cursor.close()
+                print("✅ withdrawal_requests.phone_number eklendi")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                    print("ℹ️  withdrawal_requests.phone_number zaten var")
+                else:
+                    print(f"⚠️  withdrawal_requests.phone_number: {e}")
+
+            # 16. users.game_count ekle (referral anti-spam için)
+            try:
+                cursor = conn.cursor()
+                cursor.execute("ALTER TABLE users ADD COLUMN game_count INTEGER DEFAULT 0;")
+                conn.commit()
+                cursor.close()
+                print("✅ users.game_count eklendi")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                    print("ℹ️  users.game_count zaten var")
+                else:
+                    print(f"⚠️  users.game_count: {e}")
+
+            # 17. pending_referral_rewards tablosu (anti-spam referral ödemeleri)
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS pending_referral_rewards (
+                        id SERIAL PRIMARY KEY,
+                        referrer_id BIGINT,
+                        referred_id BIGINT,
+                        reward NUMERIC(10, 2),
+                        created_date BIGINT,
+                        paid BOOLEAN DEFAULT FALSE,
+                        UNIQUE(referrer_id, referred_id)
+                    )
+                """)
+                conn.commit()
+                cursor.close()
+                print("✅ pending_referral_rewards tablosu oluşturuldu")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" in str(e).lower():
+                    print("ℹ️  pending_referral_rewards tablosu zaten var")
+                else:
+                    print(f"⚠️  pending_referral_rewards: {e}")
+
+            # 18. rtp_pool tablosu (kasa havuzu takibi)
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS rtp_pool (
+                        id INTEGER PRIMARY KEY DEFAULT 1,
+                        total_wagered NUMERIC(14, 4) DEFAULT 0.0,
+                        total_paid_out NUMERIC(14, 4) DEFAULT 0.0,
+                        CHECK (id = 1)
+                    )
+                """)
+                cursor.execute("""
+                    INSERT INTO rtp_pool (id, total_wagered, total_paid_out)
+                    VALUES (1, 0, 0)
+                    ON CONFLICT (id) DO NOTHING
+                """)
+                conn.commit()
+                cursor.close()
+                print("✅ rtp_pool tablosu oluşturuldu/kontrol edildi")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" in str(e).lower():
+                    print("ℹ️  rtp_pool tablosu zaten var")
+                else:
+                    print(f"⚠️  rtp_pool: {e}")
+
+            # 19. suspicious_activities tablosu (şüpheli aktivite loglama)
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS suspicious_activities (
+                        id SERIAL PRIMARY KEY,
+                        user_id BIGINT,
+                        activity_type TEXT,
+                        details TEXT,
+                        detected_at BIGINT
+                    )
+                """)
+                conn.commit()
+                cursor.close()
+                print("✅ suspicious_activities tablosu oluşturuldu")
+            except Exception as e:
+                conn.rollback()
+                if "already exists" in str(e).lower():
+                    print("ℹ️  suspicious_activities tablosu zaten var")
+                else:
+                    print(f"⚠️  suspicious_activities: {e}")
+
             print("✅ Veritabanı migration tamamlandı!")
 
         except Exception as e:
@@ -354,8 +475,7 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        # Kullanıcılar tablosu - diamond artık NUMERIC (ondalıklı)
-        # YENİ: last_activity eklendi
+        # Kullanıcılar tablosu
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id BIGINT PRIMARY KEY,
@@ -368,7 +488,8 @@ class Database:
                 joined_date BIGINT,
                 is_banned BOOLEAN DEFAULT FALSE,
                 last_task_reset BIGINT DEFAULT 0,
-                last_activity BIGINT DEFAULT 0
+                last_activity BIGINT DEFAULT 0,
+                game_count INTEGER DEFAULT 0
             )
         """)
 
@@ -427,7 +548,7 @@ class Database:
             )
         """)
 
-        # Para çekme talepleri - diamond NUMERIC
+        # Para çekme talepleri - diamond NUMERIC + telefon numarası
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS withdrawal_requests (
                 request_id SERIAL PRIMARY KEY,
@@ -437,7 +558,8 @@ class Database:
                 manat_amount NUMERIC(10, 2),
                 request_date BIGINT,
                 status TEXT DEFAULT 'pending',
-                processed_date BIGINT
+                processed_date BIGINT,
+                phone_number TEXT DEFAULT ''
             )
         """)
 
@@ -450,6 +572,45 @@ class Database:
                 daily_referrals_count INTEGER DEFAULT 0,
                 daily_withdrawn NUMERIC(10, 2) DEFAULT 0.0,
                 PRIMARY KEY (user_id, stat_date)
+            )
+        """)
+
+        # Bekleyen referral ödülleri (anti-spam)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pending_referral_rewards (
+                id SERIAL PRIMARY KEY,
+                referrer_id BIGINT,
+                referred_id BIGINT,
+                reward NUMERIC(10, 2),
+                created_date BIGINT,
+                paid BOOLEAN DEFAULT FALSE,
+                UNIQUE(referrer_id, referred_id)
+            )
+        """)
+
+        # RTP havuz takibi
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rtp_pool (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                total_wagered NUMERIC(14, 4) DEFAULT 0.0,
+                total_paid_out NUMERIC(14, 4) DEFAULT 0.0,
+                CHECK (id = 1)
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO rtp_pool (id, total_wagered, total_paid_out)
+            VALUES (1, 0, 0)
+            ON CONFLICT (id) DO NOTHING
+        """)
+
+        # Şüpheli aktivite kayıtları
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS suspicious_activities (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT,
+                activity_type TEXT,
+                details TEXT,
+                detected_at BIGINT
             )
         """)
 
@@ -476,28 +637,34 @@ class Database:
         return None
 
     def create_user(self, user_id: int, username: str, referred_by: Optional[int] = None):
-        """Yeni kullanıcı oluştur - Geliştirilmiş referal sistemi"""
+        """Yeni kullanıcı oluştur - Anti-spam referral sistemi"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
         try:
             current_time = int(time.time())
             cursor.execute("""
-                INSERT INTO users (user_id, username, diamond, referred_by, joined_date, last_task_reset, last_activity)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO users (user_id, username, diamond, referred_by, joined_date, last_task_reset, last_activity, game_count)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 0)
                 ON CONFLICT (user_id) DO NOTHING
             """, (user_id, username, Config.NEW_USER_BONUS, referred_by, current_time, current_time, current_time))
 
-            # Eğer referal varsa, referansı çağıran kişiye bonus ver
+            # Eğer referal varsa, ödülü pending olarak kaydet (anti-spam)
             if referred_by:
                 cursor.execute("""
-                    UPDATE users
-                    SET diamond = diamond + %s, referral_count = referral_count + 1
-                    WHERE user_id = %s
-                """, (Config.REFERAL_REWARD, referred_by))
+                    INSERT INTO pending_referral_rewards (referrer_id, referred_id, reward, created_date, paid)
+                    VALUES (%s, %s, %s, %s, FALSE)
+                    ON CONFLICT (referrer_id, referred_id) DO NOTHING
+                """, (referred_by, user_id, Config.REFERAL_REWARD, current_time))
 
-                # ✅ YENİ: Günlük referal istatistiğini güncelle
-                conn.commit()  # Önce commit yap
+                # Referal sayısını hemen artır ama diamond'ı henüz verme
+                cursor.execute("""
+                    UPDATE users
+                    SET referral_count = referral_count + 1
+                    WHERE user_id = %s
+                """, (referred_by,))
+
+                conn.commit()
                 cursor.close()
                 self.return_connection(conn)
                 self.update_daily_referral(referred_by)
@@ -509,23 +676,50 @@ class Database:
             logging.error(f"Kullanıcı oluşturma hatası: {e}")
         finally:
             if not conn.closed:
-                cursor.close()
-                self.return_connection(conn)
+                try:
+                    cursor.close()
+                    self.return_connection(conn)
+                except Exception:
+                    pass
 
-    def update_diamond(self, user_id: int, amount: float):
-        """Diamond güncelle - Artık ondalıklı sayıları destekler"""
+    def update_diamond(self, user_id: int, amount: float) -> float:
+        """Diamond güncelle - Günlük kazanç limitini uygular. Gerçekte eklenen miktarı döndürür."""
+        actual_amount = amount
+
+        # Günlük limit yalnızca pozitif kazançlara uygulanır
+        if amount > 0 and Config.DAILY_EARN_CAP > 0:
+            from datetime import date
+            today = date.today()
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COALESCE(daily_diamonds_earned, 0) FROM daily_stats
+                WHERE user_id = %s AND stat_date = %s
+            """, (user_id, today))
+            row = cursor.fetchone()
+            cursor.close()
+            self.return_connection(conn)
+
+            already_earned = float(row[0]) if row else 0.0
+            remaining_cap = Config.DAILY_EARN_CAP - already_earned
+
+            if remaining_cap <= 0:
+                return 0.0  # Limit doldu, kazanç eklenmez
+            actual_amount = min(amount, remaining_cap)
+
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE users SET diamond = diamond + %s WHERE user_id = %s
-        """, (amount, user_id))
+        """, (actual_amount, user_id))
         conn.commit()
         cursor.close()
         self.return_connection(conn)
 
-        # ✅ YENİ: Günlük istatistiği güncelle (sadece pozitif kazançlar için)
-        if amount > 0:
-            self.update_daily_diamonds(user_id, amount)
+        if actual_amount > 0:
+            self.update_daily_diamonds(user_id, actual_amount)
+
+        return actual_amount
 
     def get_user_balance(self, user_id: int) -> float:
         """Kullanıcının mevcut bakiyesini getir"""
@@ -867,22 +1061,6 @@ class Database:
 
     # ========== PARA ÇEKME İŞLEMLERİ ==========
 
-    def create_withdrawal_request(self, user_id: int, username: str, diamond: float, manat: float):
-        """Para çekme talebi oluştur"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO withdrawal_requests
-            (user_id, username, diamond_amount, manat_amount, request_date)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING request_id
-        """, (user_id, username, diamond, manat, int(time.time())))
-        request_id = cursor.fetchone()[0]
-        conn.commit()
-        cursor.close()
-        self.return_connection(conn)
-        return request_id
-
     def get_withdrawal_request(self, request_id: int) -> Optional[Dict]:
         """Para çekme talebini getir"""
         conn = self.get_connection()
@@ -897,6 +1075,7 @@ class Database:
             req_dict = dict(request)
             req_dict['diamond_amount'] = float(req_dict['diamond_amount'])
             req_dict['manat_amount'] = float(req_dict['manat_amount'])
+            req_dict['phone_number'] = req_dict.get('phone_number', '')
             return req_dict
         return None
 
@@ -970,6 +1149,7 @@ class Database:
             req_dict = dict(r)
             req_dict['diamond_amount'] = float(req_dict['diamond_amount'])
             req_dict['manat_amount'] = float(req_dict['manat_amount'])
+            req_dict['phone_number'] = req_dict.get('phone_number', '')
             result.append(req_dict)
         return result
 
@@ -1167,10 +1347,170 @@ class Database:
             cursor.close()
             self.return_connection(conn)
 
+    # ========== RTP HAVUZU (KASA) ==========
 
+    def update_rtp_pool(self, wagered: float = 0.0, paid_out: float = 0.0):
+        """RTP havuzunu güncelle"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE rtp_pool
+                SET total_wagered = total_wagered + %s,
+                    total_paid_out = total_paid_out + %s
+                WHERE id = 1
+            """, (wagered, paid_out))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"RTP pool güncelleme hatası: {e}")
+        finally:
+            cursor.close()
+            self.return_connection(conn)
 
+    def get_rtp_ratio(self) -> float:
+        """Mevcut RTP oranını döndür (paid_out / wagered). Sıfır bölme durumunda 0.0 döner."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT total_wagered, total_paid_out FROM rtp_pool WHERE id = 1")
+            row = cursor.fetchone()
+            if not row or row[0] == 0:
+                return 0.0
+            return float(row[1]) / float(row[0])
+        except Exception as e:
+            logging.error(f"RTP ratio hatası: {e}")
+            return 0.0
+        finally:
+            cursor.close()
+            self.return_connection(conn)
 
-# Global database instance
+    def get_dynamic_win_chance(self, base_chance: int) -> int:
+        """Kasa havuzu oranına göre dinamik kazanma şansı döndür."""
+        rtp = self.get_rtp_ratio()
+        if rtp > Config.RTP_THRESHOLD:
+            adjusted = base_chance - Config.RTP_WIN_CHANCE_REDUCTION
+            return max(adjusted, 1)  # En az %1 şans
+        return base_chance
+
+    # ========== OYUN SAYACI VE REFERRAL ANTI-SPAM ==========
+
+    def increment_game_count(self, user_id: int):
+        """Kullanıcının oyun sayısını artır ve bekleyen referral ödüllerini kontrol et."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE users SET game_count = game_count + 1 WHERE user_id = %s
+                RETURNING game_count, referred_by
+            """, (user_id,))
+            row = cursor.fetchone()
+            conn.commit()
+            cursor.close()
+            self.return_connection(conn)
+
+            if row:
+                game_count, referred_by = row
+                # 10 oyun eşiğine ulaşıldıysa referrer'a ödülü ver
+                if game_count == Config.REFERAL_MIN_GAMES and referred_by:
+                    self._pay_pending_referral(user_id, referred_by)
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"Oyun sayacı hatası: {e}")
+            try:
+                cursor.close()
+                self.return_connection(conn)
+            except Exception:
+                pass
+
+    def _pay_pending_referral(self, referred_id: int, referrer_id: int):
+        """Bekleyen referral ödülünü öde."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE pending_referral_rewards
+                SET paid = TRUE
+                WHERE referrer_id = %s AND referred_id = %s AND paid = FALSE
+                RETURNING reward
+            """, (referrer_id, referred_id))
+            row = cursor.fetchone()
+            if row:
+                reward = float(row[0])
+                conn.commit()
+                cursor.close()
+                self.return_connection(conn)
+                # Referrer'a diamond ekle
+                self.update_diamond(referrer_id, reward)
+                logging.info(f"Referral ödülü ödendi: referrer={referrer_id}, referred={referred_id}, reward={reward}")
+            else:
+                conn.rollback()
+                cursor.close()
+                self.return_connection(conn)
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"Referral ödeme hatası: {e}")
+            try:
+                cursor.close()
+                self.return_connection(conn)
+            except Exception:
+                pass
+
+    # ========== ŞÜPHELİ AKTİVİTE LOGLAMA ==========
+
+    def log_suspicious_activity(self, user_id: int, activity_type: str, details: str):
+        """Şüpheli aktiviteyi kaydet."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO suspicious_activities (user_id, activity_type, details, detected_at)
+                VALUES (%s, %s, %s, %s)
+            """, (user_id, activity_type, details, int(time.time())))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"Şüpheli aktivite log hatası: {e}")
+        finally:
+            cursor.close()
+            self.return_connection(conn)
+
+    def get_recent_suspicious_activities(self, limit: int = 20):
+        """Son şüpheli aktiviteleri getir."""
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cursor.execute("""
+                SELECT sa.*, u.username FROM suspicious_activities sa
+                LEFT JOIN users u ON sa.user_id = u.user_id
+                ORDER BY sa.detected_at DESC
+                LIMIT %s
+            """, (limit,))
+            return [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            logging.error(f"Şüpheli aktivite sorgulama hatası: {e}")
+            return []
+        finally:
+            cursor.close()
+            self.return_connection(conn)
+
+    # ========== PARA ÇEKME - TELEFON NUMARALI ==========
+
+    def create_withdrawal_request(self, user_id: int, username: str, diamond: float, manat: float, phone_number: str = ""):
+        """Para çekme talebi oluştur — telefon numarasıyla birlikte"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO withdrawal_requests
+            (user_id, username, diamond_amount, manat_amount, request_date, phone_number)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING request_id
+        """, (user_id, username, diamond, manat, int(time.time()), phone_number))
+        request_id = cursor.fetchone()[0]
+        conn.commit()
+        cursor.close()
+        self.return_connection(conn)
+        return request_id# Global database instance
 db = Database()
 
 # ============================================================================
@@ -1562,14 +1902,26 @@ async def handle_combined_media(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
 async def handle_combined_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Text mesajlarını işle - Promo kod veya Broadcast"""
+    """Text mesajlarını işle - Promo kod, Broadcast, Telefon numarası veya Admin mesajı"""
     if not context.user_data:
+        return
+
+    # Admin mesaj gönderme
+    if context.user_data.get('waiting_for_admin_msg'):
+        from bot_admin import handle_admin_msg_to_user
+        await handle_admin_msg_to_user(update, context)
         return
 
     # Önce broadcast kontrolü
     if context.user_data.get('waiting_for_broadcast'):
         from bot_admin import handle_broadcast_message
         await handle_broadcast_message(update, context)
+        return
+
+    # Telefon numarası bekleniyor mu?
+    if context.user_data.get('waiting_for_phone'):
+        from bot_handlers import handle_phone_number_input
+        await handle_phone_number_input(update, context)
         return
 
     # Sonra promo kod kontrolü
@@ -1686,9 +2038,13 @@ def main():
                 chat_id=Config.SLOT_CHAT_ID,
                 text=(
                     "🎰 <b>SLOT OÝUNY IŞLEÝÄR!</b>\n\n"
-                    "🎯 Aşakdaky düwmä bas we sloty aýla!\n"
-                    "🎉 777 düşürseň: <b>+5 💎</b>\n"
-                    "😢 Düşmese: <b>-2 💎</b>\n\n"
+                    "🎯 Aşakdaky düwmä bas we sloty aýla!\n\n"
+                    "🏆 <b>Utup bolýan kombinasiýalar:</b>\n"
+                    "🍒🍒🍒 = <b>+1.0 💎</b>\n"
+                    "🍋🍋🍋 = <b>+1.5 💎</b>\n"
+                    "7️⃣7️⃣7️⃣ = <b>+5.0 💎 (JACKPOT!)</b>\n\n"
+                    "💡 <b>Ýakyn geçmek:</b> 2 deň + 1 tapawutly = <b>+0.1 💎</b> teselli\n"
+                    "😢 <b>Ýitirseň:</b> <b>-0.5 💎</b>\n\n"
                     "🍀 Şanslymykaň?!"
                 ),
                 parse_mode="HTML",
