@@ -351,21 +351,21 @@ async def show_games_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎯 <b>Almany Tap</b>\n"
         f"   • Oýnamak: 0 💎!\n"
         f"   • Gazansaň: +{Config.APPLE_BOX_WIN_REWARD} 💎\n"
-        f"   • Ýitirseň: {Config.APPLE_BOX_LOSE_PENALTY} 💎\n"
+        f"   • Utulsaň: {Config.APPLE_BOX_LOSE_PENALTY} 💎\n"
         f"   • Şans: %{Config.APPLE_BOX_WIN_CHANCE}\n\n"
         f"🎰 <b>Lotereýa (Ýeňil)</b>\n"
         f"   • Oýnamak: 0 💎!\n"
         f"   • Gazansaň: +{Config.SCRATCH_EASY_WIN_REWARD} 💎\n"
-        f"   • Ýitirseň: {Config.SCRATCH_EASY_LOSE_PENALTY} 💎\n"
+        f"   • Utulsaň: {Config.SCRATCH_EASY_LOSE_PENALTY} 💎\n"
         f"   • Şans: %{Config.SCRATCH_EASY_WIN_CHANCE}\n\n"
         f"🎰 <b>Lotereýa (Kyn)</b>\n"
         f"   • Oýnamak: 0 💎!\n"
         f"   • Gazansaň: +{Config.SCRATCH_HARD_WIN_REWARD} 💎\n"
-        f"   • Ýitirseň: {Config.SCRATCH_HARD_LOSE_PENALTY} 💎\n"
+        f"   • Utulsaň: {Config.SCRATCH_HARD_LOSE_PENALTY} 💎\n"
         f"   • Şans: %{Config.SCRATCH_HARD_WIN_CHANCE}\n\n"
         f"🎡 <b>Şansly Aýlaw</b>\n"
         f"   • Oýnamak: 0 💎!\n"
-        f"   • Täsirli baýraklar (0 → +50 💎)\n\n"
+        f"   • Täsirli baýraklar (0 → +10 💎)\n\n"
         f"⚠️ <b>Ähli oýunlarda Diamond utup bolyar!</b>\n"
         f"✅ Gazansaň diamond alýarsyň\n"
     )
@@ -403,7 +403,7 @@ async def handle_game_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Dogry gutuny saýlasaňyz utýaňyz! 🎉\n\n"
             f"💰 <b>Giriş tölegi:</b> 0 💎!\n"
             f"💎 <b>Gazanç:</b> +{Config.APPLE_BOX_WIN_REWARD} diamond\n"
-            f"⚠️ <b>Ýitirseň:</b> {Config.APPLE_BOX_LOSE_PENALTY} diamond\n"
+            f"⚠️ <b>Utulsaň:</b> {Config.APPLE_BOX_LOSE_PENALTY} diamond\n"
             f"📊 <b>Şans:</b> %{Config.APPLE_BOX_WIN_CHANCE}\n\n"
             f"💰 Siziň balansynyz: <b>{balance:.1f} 💎</b>"
         )
@@ -416,7 +416,7 @@ async def handle_game_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"3 sany şol bir stikeri tapsaňyz utýaňyz! 🎊🍊🍇\n\n"
             f"💰 <b>Giriş tölegi:</b> 0 💎!\n"
             f"💎 <b>Gazanç:</b> +{Config.SCRATCH_EASY_WIN_REWARD} diamond\n"
-            f"⚠️ <b>Ýitirseň:</b> {Config.SCRATCH_EASY_LOSE_PENALTY} diamond\n"
+            f"⚠️ <b>Utulsaň:</b> {Config.SCRATCH_EASY_LOSE_PENALTY} diamond\n"
             f"📊 <b>Şans:</b> %{Config.SCRATCH_EASY_WIN_CHANCE} (Ýeňil)\n\n"
             f"💰 Siziň balansynyz: <b>{balance:.1f} 💎</b>"
         )
@@ -430,7 +430,7 @@ async def handle_game_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"⚠️ Has köp dürli miweler bar - has kyn!\n\n"
             f"💰 <b>Giriş tölegi:</b> 0 💎!\n"
             f"💎 <b>Gazanç:</b> +{Config.SCRATCH_HARD_WIN_REWARD} diamond\n"
-            f"⚠️ <b>Ýitirseň:</b> {Config.SCRATCH_HARD_LOSE_PENALTY} diamond\n"
+            f"⚠️ <b>Utulsaň:</b> {Config.SCRATCH_HARD_LOSE_PENALTY} diamond\n"
             f"📊 <b>Şans:</b> %{Config.SCRATCH_HARD_WIN_CHANCE} (Kyn)\n\n"
             f"💰 Siziň balansynyz: <b>{balance:.1f} 💎</b>"
         )
@@ -1024,7 +1024,7 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result_text = (
             f"🎰 <b>SLOT</b>\n\n"
             f"[ {result_str} ]\n\n"
-            f"😅 <b>Ýakyn boldyňyz!</b>\n"
+            f"😅 <b>Golaýladyňyz!</b>\n"
             f"💔 Ýitirilen: <b>{abs(Config.SLOT_LOSE_PENALTY):.1f} diamond</b>\n"
             f"🎁 Teselli: <b>+{Config.SLOT_NEAR_MISS_REWARD:.1f} diamond</b>\n"
             f"💰 Täze balans: <b>{new_balance:.1f} diamond</b>"
@@ -1061,7 +1061,7 @@ async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     user_data = db.get_user(user_id)
     if not user_data:
-        await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
+        await query.answer("❌ Ýalňyşlyk! /start bilen başlaň", show_alert=True)
         return
 
     can_withdraw = (
@@ -1124,7 +1124,7 @@ async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
 
     user_data = db.get_user(user_id)
     if not user_data:
-        await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
+        await query.answer("❌ Ýalňyşlyk! /start ile başlayın", show_alert=True)
         return
 
     if user_data["diamond"] < amount:
@@ -1141,9 +1141,9 @@ async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
 
     await query.edit_message_text(
         f"📱 <b>Telefon Nomer</b>\n\n"
-        f"💎 Çekilecek miktar: <b>{amount:.1f} diamond</b>\n"
+        f"💎 Çykaryljak mukdar: <b>{amount:.1f} diamond</b>\n"
         f"💵 Manat: <b>{amount / Config.DIAMOND_TO_MANAT:.2f} TMT</b>\n\n"
-        f"📞 Ödeme yapılacak telefon numarasını giriň:\n"
+        f"📞 Töleg edilmeli nomeri ýazyň:\n"
         f"<i>Mysal: +99361234567</i>",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
@@ -1185,7 +1185,7 @@ async def handle_phone_number_input(update: Update, context: ContextTypes.DEFAUL
         f"⚠️ Talap kabul edilende diamond hasabyňyzdan düşüriler.",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🏠 Ana Menü", callback_data="back_main")
+            InlineKeyboardButton("🏠 Yza gaýt", callback_data="back_main")
         ]])
     )
 
@@ -1251,8 +1251,8 @@ async def show_daily_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not is_bot_admin:
         text += (
-            f"⚠️ <b>DİKKAT!</b>\n"
-            f"Bot bu kanalda admin däl. Üýtgeme bolmasa admina habar berildi.\n\n"
+            f"⚠️ <b>DUÝDURYŞ!</b>\n"
+            f"Bot bu kanalda admin däl. Azajyk garaşyň.\n\n"
         )
 
     text += f"👇 Kanala agza boluň we 'Agza Boldum' düwmesine basyň!"
@@ -1392,16 +1392,16 @@ async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"❓ <b>Ýygy-ýygydan soralýan soraglar</b>\n\n"
         f"<b>🎮 Näme oýnamaly?</b>\n"
-        f"Oýunlary saýlap oýnaň! Gazansaňyz diamond alýarsyňyz, ýitirseňiz azalýar.\n\n"
-        f"<b>💎 Diamond näme gazanmaly?</b>\n"
+        f"Oýnajak oýunyňyzy saýlaň! Utsaňyz diamond alýarsyňyz, utulsaňyz azalýar.\n\n"
+        f"<b>💎 Diamond nädip gazanmaly?</b>\n"
         f"• Oýunlar oýnaň\n"
         f"• Gündelik bonus alyň\n"
         f"• Zadanýalary ýerine ýetiriň\n"
-        f"• Referalyňyz bilen adam çagryň ({Config.REFERAL_REWARD} 💎 bonus)\n"
+        f"• Referalyňyz bilen adam çagyryň ({Config.REFERAL_REWARD} 💎 bonus)\n"
         f"• Promo kodlary ulanyň\n\n"
-        f"<b>💰 Pul näme çekmeli?</b>\n"
+        f"<b>💰 Pul nädip çekmeli?</b>\n"
         f"• Azyndan {Config.MIN_WITHDRAW_DIAMOND} diamond jemlemeli\n"
-        f"• {Config.MIN_REFERRAL_COUNT} adam çagyrm aly\n"
+        f"• {Config.MIN_REFERRAL_COUNT} adam çagyrmaly\n"
         f"• 'Pul çekmek' bölüminden talap döretmeli\n"
         f"• Admin siz bilen habarlaşýar\n\n"
         f"<b>🔒 Howpsuzlyk</b>\n"
