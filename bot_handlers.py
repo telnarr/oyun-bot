@@ -51,6 +51,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Ana menü
     if data == "back_main":
+        # Bekleyen para çekme işlemini iptal et
+        context.user_data.pop("waiting_for_phone", None)
+        context.user_data.pop("pending_withdraw_amount", None)
         await show_main_menu(update, context)
 
     # Kanal takibi kontrolü
@@ -498,7 +501,6 @@ async def handle_game_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     balance = user_data['diamond']
 
-    # Bakiye kontrolü - Oyunlar bedava ama kullanıcı 0'ın altına inemez
     if not can_play_game(balance):
         await query.answer(
             f"❌ Bakiýeňiz ýeterlik däl! Ilki bilen diamond gazanyň.",
@@ -506,7 +508,11 @@ async def handle_game_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Oyunu başlat (artık diamond düşürme yok, oyun bedava)
+    # Oyun sayacını artır (referral anti-spam için)
+    db.increment_game_count(user_id)
+    # Şüpheli hız kontrolü (inline oyunlar için)
+    _check_suspicious_speed(user_id, context)
+
     if game_data == "game_apple":
         await play_apple_box_game(update, context)
     elif game_data == "game_scratch_easy":
@@ -552,7 +558,7 @@ async def play_apple_box_game(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
 
 async def handle_apple_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Kutu seçimi - Güncellenmış ödül sistemi"""
+    """Kutu seçimi - Animasyon + RTP havuzu"""
     query = update.callback_query
     await query.answer()
 
@@ -561,14 +567,15 @@ async def handle_apple_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
     choice = int(data[2])
     apple_pos = int(data[3])
 
-    # Animasyon
-    await query.edit_message_text("📦 Gutu açylýar...")
+    # 1.5 saniyelik animasyon
+    await query.edit_message_text("🎲 Netije hasaplanýar...")
     await asyncio.sleep(1.5)
 
     if choice == apple_pos:
-        # Kazandı - Diamond ekle
         reward = Config.APPLE_BOX_WIN_REWARD
         db.update_diamond(user_id, reward)
+        db.update_rtp_pool(wagered=0.5, paid_out=reward)
+        _record_win(user_id, context)
 
         await query.edit_message_text(
             f"🎉 <b>GUTLAÝARYS!</b>\n\n"
@@ -576,14 +583,14 @@ async def handle_apple_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"💎 Gazanç: <b>+{reward} diamond</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_play_game_apple"),  # ← DÜZELTME BURASI
+                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_play_game_apple"),
                 InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
             ]])
         )
     else:
-        # Kaybetti - Diamond düş
         penalty = Config.APPLE_BOX_LOSE_PENALTY
         db.update_diamond(user_id, penalty)
+        db.update_rtp_pool(wagered=0.5, paid_out=0.0)
 
         result_list = ["❌", "❌", "❌"]
         result_list[apple_pos] = "🎯"
@@ -597,7 +604,7 @@ async def handle_apple_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"💪 Täzeden synanyşyň!",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_play_game_apple"),  # ← DÜZELTME BURASI
+                InlineKeyboardButton("🎮 Täzeden oýnamak", callback_data="game_play_game_apple"),
                 InlineKeyboardButton("🔙 Oýunlar", callback_data="earn_games")
             ]])
         )
@@ -691,7 +698,6 @@ async def handle_scratch_reveal(update: Update, context: ContextTypes.DEFAULT_TY
 
     # Kazanma kontrolü
     revealed_cards = [cards[i] for i, r in enumerate(revealed) if r]
-
     counts = Counter(revealed_cards)
 
     won = False
@@ -704,20 +710,23 @@ async def handle_scratch_reveal(update: Update, context: ContextTypes.DEFAULT_TY
 
     # Eğer oyun bittiyse (kazandı veya denemeler bitti)
     if won or attempts == 0:
-        # Kısa bir bekleme
-        await asyncio.sleep(1)
+        # 1.5 saniyelik animasyon
+        try:
+            await query.edit_message_text("🎲 Netije hasaplanýar...")
+        except Exception:
+            pass
+        await asyncio.sleep(1.5)
 
         difficulty = context.user_data['scratch_difficulty']
 
         if won:
-            # Kazandı - Diamond ekle
             reward = Config.SCRATCH_EASY_WIN_REWARD if difficulty == "easy" else Config.SCRATCH_HARD_WIN_REWARD
             db.update_diamond(user_id, reward)
+            db.update_rtp_pool(wagered=0.5, paid_out=reward)
+            _record_win(user_id, context)
 
-            # Tüm kartları göster
             context.user_data['scratch_revealed'] = [True] * 9
             await show_scratch_board(update, context)
-
             await asyncio.sleep(0.5)
 
             await query.message.reply_text(
@@ -730,14 +739,12 @@ async def handle_scratch_reveal(update: Update, context: ContextTypes.DEFAULT_TY
                 ]])
             )
         else:
-            # Kaybetti - Diamond düş
             penalty = Config.SCRATCH_EASY_LOSE_PENALTY if difficulty == "easy" else Config.SCRATCH_HARD_LOSE_PENALTY
             db.update_diamond(user_id, penalty)
+            db.update_rtp_pool(wagered=0.5, paid_out=0.0)
 
-            # Tüm kartları göster
             context.user_data['scratch_revealed'] = [True] * 9
             await show_scratch_board(update, context)
-
             await asyncio.sleep(0.5)
 
             await query.message.reply_text(
@@ -830,26 +837,77 @@ async def play_wheel_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+
+# ============================================================================
+# ŞÜPHELİ AKTİVİTE YARDIMCI FONKSİYONLARI
+# ============================================================================
+
+# Kullanıcı başına son oyun zamanını bellekte tut
+_last_game_times: dict = {}
+_fast_win_tracker: dict = {}
+
+def _check_suspicious_speed(user_id: int, context):
+    """Çok hızlı oyun oynama veya sürekli kazanma tespiti — admin bildir."""
+    import time as _time
+    now = _time.time()
+    last = _last_game_times.get(user_id, 0)
+    _last_game_times[user_id] = now
+
+    # 3 saniyeden az arayla oyun oynuyorsa şüpheli
+    if last and (now - last) < 3:
+        db.log_suspicious_activity(user_id, "fast_play", f"Interval: {now - last:.2f}s")
+        # Admin'e async bildir (fire-and-forget)
+        asyncio.create_task(_notify_admin_suspicious(context, user_id, "⚡ Çok hızlı oyun oynama"))
+
+def _record_win(user_id: int, context):
+    """Art arda kazanma tespiti."""
+    wins = _fast_win_tracker.get(user_id, [])
+    import time as _time
+    now = _time.time()
+    wins = [t for t in wins if now - t < 60]  # Son 1 dakika
+    wins.append(now)
+    _fast_win_tracker[user_id] = wins
+    if len(wins) >= 5:
+        db.log_suspicious_activity(user_id, "consecutive_wins", f"{len(wins)} wins in 60s")
+        asyncio.create_task(_notify_admin_suspicious(context, user_id, "🎯 Art arda 5+ kazanma"))
+
+async def _notify_admin_suspicious(context, user_id: int, reason: str):
+    """Admin'e şüpheli aktivite bildirimi gönder."""
+    from bot_main import Config as _Config
+    user_data = db.get_user(user_id)
+    username = f"@{user_data['username']}" if user_data and user_data.get("username") else str(user_id)
+    for admin_id in _Config.ADMIN_IDS:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=(
+                    f"⚠️ <b>Şüpheli Aktivite!</b>\n\n"
+                    f"👤 Ulanyjy: {username} (ID: {user_id})\n"
+                    f"🔍 Sebäp: {reason}\n\n"
+                    f"Admin panelinden kontrol ediň."
+                ),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logging.error(f"Admin şüpheli aktivite bildirimi hatası: {e}")
+
 # ============================================================================
 # SLOT OYUNU - DÜZELTİLMİŞ VERSİYON
 # ============================================================================
 
 async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Slot oyunu - Sadece belirli grupta çalışır"""
+    """Slot oyunu - Çoklu kombinasyon, yakın geçme, RTP havuzu"""
     message = update.message
     user_id = message.from_user.id
     chat_id = message.chat_id
 
-    # Sadece belirli grupta oynansın
     if str(chat_id) != str(Config.SLOT_CHAT_ID):
         return
 
-    # ✅ AKTİVİTE GÜNCELLE - EKLENDİ
     db.update_last_activity(user_id)
+    db.increment_game_count(user_id)
 
-    # Kullanıcı bilgilerini al
     user_data = db.get_user(user_id)
-
     if not user_data:
         await message.reply_text(
             "⚠️ İlki boty ulanmaly bolýaňyz: @gazandyryan_bot",
@@ -857,10 +915,9 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    balance = user_data['diamond']
+    balance = user_data["diamond"]
 
-    # Bakiye kontrolü (0'ın altına inemez)
-    if balance < 0:
+    if balance < Config.MIN_BALANCE_TO_PLAY:
         await message.reply_text(
             f"❌ <b>Hasabyňyz ýeterlik däl!</b>\n"
             f"💎 Häzirki balans: <b>{balance:.1f} diamond</b>\n\n"
@@ -870,110 +927,146 @@ async def play_slot_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Animasyon başlat
+    # Şüpheli aktivite kontrolü
+    _check_suspicious_speed(user_id, context)
+
+    # Animasyon
     animation_msg = await message.reply_text(
         "🎰 <b>SLOT çark aýlanýar...</b>",
         parse_mode="HTML",
         reply_to_message_id=message.message_id
     )
 
-    # Slot emojileri (sadece 7 ve meyveler)
     slot_symbols = ["🍎", "🍋", "🍊", "🍉", "🍇", "7️⃣"]
 
-    # Animasyon frameleri (hızlı değişim)
     for _ in range(8):
         frame = " ".join([random.choice(slot_symbols) for _ in range(3)])
         try:
             await animation_msg.edit_text(
-                f"🎰 <b>SLOT</b>\n\n"
-                f"[ {frame} ]\n\n"
-                f"💫 Aýlanýar...",
+                f"🎰 <b>SLOT</b>\n\n[ {frame} ]\n\n💫 Aýlanýar...",
                 parse_mode="HTML"
             )
-        except:
-            pass  # Rate limit hatalarını yoksay
+        except Exception:
+            pass
         await asyncio.sleep(0.3)
 
-    # Sonucu belirle - Şans kontrolü
-    is_winner = random.randint(1, 100) <= Config.SLOT_WIN_CHANCE
+    # 1.5 saniyelik "Hesaplanıyor" ekranı
+    try:
+        await animation_msg.edit_text(
+            "🎰 <b>SLOT</b>\n\n⏳ Netije hasaplanýar...",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
+    await asyncio.sleep(1.5)
+
+    # RTP'ye göre dinamik kazanma şansı
+    win_chance = db.get_dynamic_win_chance(Config.SLOT_WIN_CHANCE)
+    is_winner = random.randint(1, 100) <= win_chance
+
+    result_symbols = None
+    reward = Config.SLOT_LOSE_PENALTY
+    near_miss = False
 
     if is_winner:
-        # Kazandı - 7️⃣ 7️⃣ 7️⃣
-        result = ["7️⃣", "7️⃣", "7️⃣"]
-        reward = Config.SLOT_WIN_REWARD
+        # Hangi kombinasyon? (büyük ödül daha nadir)
+        combo_weights = [1.0 / c[1] for c in Config.SLOT_COMBINATIONS]
+        total_w = sum(combo_weights)
+        combo_weights = [w / total_w for w in combo_weights]
+        chosen_combo = random.choices(Config.SLOT_COMBINATIONS, weights=combo_weights, k=1)[0]
+        result_symbols = chosen_combo[0]
+        reward = chosen_combo[1]
+        db.update_rtp_pool(wagered=0.5, paid_out=reward)
         db.update_diamond(user_id, reward)
+    else:
+        while True:
+            result_symbols = [random.choice(slot_symbols) for _ in range(3)]
+            is_winning_combo = any(result_symbols == list(c[0]) for c in Config.SLOT_COMBINATIONS)
+            if not is_winning_combo:
+                break
 
+        # Yakın geçme: 2 aynı + 1 farklı
+        s = result_symbols
+        if (s[0] == s[1] != s[2]) or (s[1] == s[2] != s[0]) or (s[0] == s[2] != s[1]):
+            near_miss = True
+
+        paid = Config.SLOT_NEAR_MISS_REWARD if near_miss else 0.0
+        db.update_rtp_pool(wagered=0.5, paid_out=paid)
+        db.update_diamond(user_id, Config.SLOT_LOSE_PENALTY)
+        if near_miss:
+            db.update_diamond(user_id, Config.SLOT_NEAR_MISS_REWARD)
+
+    result_str = " ".join(result_symbols)
+    new_balance = db.get_user_balance(user_id)
+
+    if is_winner:
         result_text = (
             f"🎰 <b>SLOT</b>\n\n"
-            f"[ 7️⃣ 7️⃣ 7️⃣ ]\n\n"
+            f"[ {result_str} ]\n\n"
             f"🎉 <b>GUTLAÝARYS!</b>\n"
             f"💎 Gazanç: <b>+{reward:.1f} diamond</b>\n"
-            f"💰 Täze balans: <b>{balance + reward:.1f} diamond</b>"
+            f"💰 Täze balans: <b>{new_balance:.1f} diamond</b>"
         )
-
-        # Kazananı duyur (opsiyonel)
         try:
             await context.bot.send_message(
                 chat_id=Config.SLOT_CHAT_ID,
                 text=(
                     f"🏆 <b>ÝEŇIJI!</b>\n\n"
                     f"👤 @{message.from_user.username or message.from_user.first_name}\n"
-                    f"🎰 777 tapdy!\n"
+                    f"🎰 {result_str}\n"
                     f"💎 Gazanç: <b>+{reward:.1f} diamond</b>"
                 ),
                 parse_mode="HTML"
             )
-        except:
+        except Exception:
             pass
-    else:
-        # Kaybetti - Rastgele ama 777 değil
-        result = []
-        for _ in range(3):
-            symbol = random.choice(slot_symbols)
-            result.append(symbol)
-
-        # Eğer 3'ü de aynıysa, birini değiştir
-        if result[0] == result[1] == result[2]:
-            result[2] = random.choice([s for s in slot_symbols if s != result[0]])
-
-        reward = Config.SLOT_LOSE_PENALTY
-        db.update_diamond(user_id, reward)
-
+    elif near_miss:
         result_text = (
             f"🎰 <b>SLOT</b>\n\n"
-            f"[ {' '.join(result)} ]\n\n"
+            f"[ {result_str} ]\n\n"
+            f"😅 <b>Ýakyn boldyňyz!</b>\n"
+            f"💔 Ýitirilen: <b>{abs(Config.SLOT_LOSE_PENALTY):.1f} diamond</b>\n"
+            f"🎁 Teselli: <b>+{Config.SLOT_NEAR_MISS_REWARD:.1f} diamond</b>\n"
+            f"💰 Täze balans: <b>{new_balance:.1f} diamond</b>"
+        )
+    else:
+        result_text = (
+            f"🎰 <b>SLOT</b>\n\n"
+            f"[ {result_str} ]\n\n"
             f"😢 <b>Gynandyryjy...</b>\n"
-            f"💎 Ýitirilen: <b>{reward} diamond</b>\n"
-            f"💰 Täze balans: <b>{balance + reward:.1f} diamond</b>\n"
+            f"💎 Ýitirilen: <b>{abs(Config.SLOT_LOSE_PENALTY):.1f} diamond</b>\n"
+            f"💰 Täze balans: <b>{new_balance:.1f} diamond</b>\n"
             f"💪 Täzeden synanyşyň!"
         )
 
     try:
         await animation_msg.edit_text(result_text, parse_mode="HTML")
-    except:
-        # Eğer edit başarısız olursa yeni mesaj gönder
+    except Exception:
         await message.reply_text(result_text, parse_mode="HTML")
 
-    # İstatistik kaydet (opsiyonel)
-    # db.log_slot_play(user_id, "".join(result), reward)
 # ============================================================================
 # PARA ÇEKME SİSTEMİ
 # ============================================================================
 
 async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Para çekme menüsü"""
+    """Para çekme menüsü - sponsor kontrolü yalnızca burada"""
     query = update.callback_query
     user_id = query.from_user.id
 
-    user_data = db.get_user(user_id)
+    # Sponsor kontrolü: sadece ana menüye girişte ve para çekme aşamasında
+    is_member, not_joined = await check_channel_membership(user_id, context)
+    if not is_member:
+        await query.answer("❌ Ilki sponsor kanallaryna agza boluň!", show_alert=True)
+        return
 
+    user_data = db.get_user(user_id)
     if not user_data:
         await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
         return
 
     can_withdraw = (
-        user_data['diamond'] >= Config.MIN_WITHDRAW_DIAMOND and
-        user_data['referral_count'] >= Config.MIN_REFERRAL_COUNT
+        user_data["diamond"] >= Config.MIN_WITHDRAW_DIAMOND and
+        user_data["referral_count"] >= Config.MIN_REFERRAL_COUNT
     )
 
     text = (
@@ -981,7 +1074,7 @@ async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"💎 Siziň balansynyz: <b>{user_data['diamond']:.1f} diamond</b>\n"
         f"💵 Manat görnüşinde: <b>{user_data['diamond'] / Config.DIAMOND_TO_MANAT:.2f} TMT</b>\n\n"
         f"📋 <b>Şertler:</b>\n"
-        f"   • Minimum: {Config.MIN_WITHDRAW_DIAMOND} 💎\n"
+        f"   • Minimum: {Config.MIN_WITHDRAW_DIAMOND} 💎 ({Config.MIN_WITHDRAW_DIAMOND / Config.DIAMOND_TO_MANAT:.0f} manat)\n"
         f"   • Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrm aly\n"
         f"   • {Config.DIAMOND_TO_MANAT} diamond = 1 manat\n\n"
     )
@@ -992,10 +1085,9 @@ async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text += f"✅ Siz pul çekip bilersiňiz!\n\n"
         text += f"💎 <b>Çekmek isleýän mukdaryňyzy saýlaň:</b>"
 
-        # Para çekme seçenekleri
         withdraw_buttons = []
         for amount in Config.WITHDRAW_OPTIONS:
-            if user_data['diamond'] >= amount:
+            if user_data["diamond"] >= amount:
                 manat = amount / Config.DIAMOND_TO_MANAT
                 withdraw_buttons.append(
                     InlineKeyboardButton(
@@ -1004,16 +1096,14 @@ async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     )
                 )
 
-        # Her satırda 2 buton
         for i in range(0, len(withdraw_buttons), 2):
             keyboard.append(withdraw_buttons[i:i+2])
     else:
         reasons = []
-        if user_data['diamond'] < Config.MIN_WITHDRAW_DIAMOND:
+        if user_data["diamond"] < Config.MIN_WITHDRAW_DIAMOND:
             reasons.append(f"❌ Ýeterlik diamond ýok ({Config.MIN_WITHDRAW_DIAMOND} gerek)")
-        if user_data['referral_count'] < Config.MIN_REFERRAL_COUNT:
+        if user_data["referral_count"] < Config.MIN_REFERRAL_COUNT:
             reasons.append(f"❌ Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrmalysynyz")
-
         text += "\n".join(reasons)
 
     keyboard.append([InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")])
@@ -1025,7 +1115,7 @@ async def show_withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
 async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Para çekme talebini işle"""
+    """Para çekme — kullanıcıdan telefon numarası ister, sonra talebi oluşturur."""
     query = update.callback_query
     user_id = query.from_user.id
 
@@ -1033,42 +1123,73 @@ async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
     amount = float(amount_str)
 
     user_data = db.get_user(user_id)
-
     if not user_data:
         await query.answer("❌ Hata! /start ile başlayın", show_alert=True)
         return
 
-    # Son kontroller
-    if user_data['diamond'] < amount:
+    if user_data["diamond"] < amount:
         await query.answer("❌ Ýeterlik diamond ýok!", show_alert=True)
         return
 
-    if user_data['referral_count'] < Config.MIN_REFERRAL_COUNT:
+    if user_data["referral_count"] < Config.MIN_REFERRAL_COUNT:
         await query.answer(f"❌ Azyndan {Config.MIN_REFERRAL_COUNT} referal çagyrmalysynyz!", show_alert=True)
         return
 
-    # Para çekme talebini oluştur
-    manat_amount = amount / Config.DIAMOND_TO_MANAT
-    request_id = db.create_withdrawal_request(
-        user_id,
-        user_data['username'],
-        amount,
-        manat_amount
+    # Telefon numarasını iste
+    context.user_data["pending_withdraw_amount"] = amount
+    context.user_data["waiting_for_phone"] = True
+
+    await query.edit_message_text(
+        f"📱 <b>Telefon Nomer</b>\n\n"
+        f"💎 Çekilecek miktar: <b>{amount:.1f} diamond</b>\n"
+        f"💵 Manat: <b>{amount / Config.DIAMOND_TO_MANAT:.2f} TMT</b>\n\n"
+        f"📞 Ödeme yapılacak telefon numarasını giriň:\n"
+        f"<i>Mysal: +99361234567</i>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("❌ Ýatyr", callback_data="back_main")
+        ]])
     )
 
-    # Kullanıcıya bildirim
-    await query.edit_message_text(
+async def handle_phone_number_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Telefon numarasını işle ve para çekme talebini oluştur."""
+    if not context.user_data:
+        return
+    if not context.user_data.get("waiting_for_phone"):
+        return
+
+    user_id = update.effective_user.id
+    phone_number = update.message.text.strip()
+    amount = context.user_data.get("pending_withdraw_amount", 0.0)
+
+    context.user_data["waiting_for_phone"] = False
+    context.user_data.pop("pending_withdraw_amount", None)
+
+    user_data = db.get_user(user_id)
+    if not user_data or user_data["diamond"] < amount:
+        await update.message.reply_text("❌ Ýeterlik diamond ýok!")
+        return
+
+    manat_amount = amount / Config.DIAMOND_TO_MANAT
+    request_id = db.create_withdrawal_request(
+        user_id, user_data["username"], amount, manat_amount, phone_number
+    )
+
+    await update.message.reply_text(
         f"✅ <b>Talap döredildi!</b>\n\n"
         f"📋 Talap №: <code>{request_id}</code>\n"
         f"💎 Mukdar: <b>{amount:.1f} diamond</b>\n"
-        f"💵 Manat: <b>{manat_amount:.2f} TMT</b>\n\n"
-        f"⏳ Admin siziň talabyňyzy gözden geçirer we siz bilen habarlaşar.\n\n"
+        f"💵 Manat: <b>{manat_amount:.2f} TMT</b>\n"
+        f"📱 Telefon: <b>{phone_number}</b>\n\n"
+        f"⏳ Admin siziň talabyňyzy gözden geçirer we siz bilen habarlaşar.\n"
         f"⚠️ Talap kabul edilende diamond hasabyňyzdan düşüriler.",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔙 Yza gaýt", callback_data="back_main")
+            InlineKeyboardButton("🏠 Ana Menü", callback_data="back_main")
         ]])
     )
+
+    db.update_last_activity(user_id)
 
     # Admin'e bildirim
     for admin_id in Config.ADMIN_IDS:
@@ -1080,7 +1201,8 @@ async def handle_withdraw_request(update: Update, context: ContextTypes.DEFAULT_
                     f"📋 Talap №: <code>{request_id}</code>\n"
                     f"👤 Ulanyjy: @{user_data['username']} (ID: {user_id})\n"
                     f"💎 Mukdar: <b>{amount:.1f} diamond</b>\n"
-                    f"💵 Manat: <b>{manat_amount:.2f} TMT</b>\n\n"
+                    f"💵 Manat: <b>{manat_amount:.2f} TMT</b>\n"
+                    f"📱 Telefon: <b>{phone_number}</b>\n\n"
                     f"Talapy işlemek üçin:\n"
                     f"/approve {request_id} - Tassyklamak\n"
                     f"/reject {request_id} - Ret etmek"
