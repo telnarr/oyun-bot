@@ -255,7 +255,7 @@ async def handle_membership_check(update: Update, context: ContextTypes.DEFAULT_
         )
 
         if referred_by:
-            welcome_msg += f"🎁 Sizi çagyran adama hem <b>{Config.REFERAL_REWARD} diamond</b> berildi!\n"
+            welcome_msg += f"🎁 Sizi çagyran adama <b>+{Config.REFERAL_REWARD} diamond</b> berildi!\n"
 
             try:
                 referrer_data = db.get_user(referred_by)
@@ -265,7 +265,7 @@ async def handle_membership_check(update: Update, context: ContextTypes.DEFAULT_
                         text=(
                             f"🎉 <b>Täze Referal!</b>\n\n"
                             f"👤 @{user.username or user.first_name} siziň referalyňyz bilen bota goşuldy!\n"
-                            f"💎 Bonus: <b>+{Config.REFERAL_REWARD} diamond</b>\n\n"
+                            f"💎 Bonus: <b>+{Config.REFERAL_REWARD} diamond</b> — eýýäm hasabyňyza geldi!\n\n"
                             f"👥 Jemi referalyňyz: <b>{referrer_data['referral_count'] + 1}</b>"
                         ),
                         parse_mode="HTML"
@@ -508,9 +508,9 @@ async def handle_game_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Oyun sayacını artır (referral anti-spam için)
+    # Oyun sayacini artir
     db.increment_game_count(user_id)
-    # Şüpheli hız kontrolü (inline oyunlar için)
+    # Süpheli hiz kontrolü (inline oyunlar için)
     _check_suspicious_speed(user_id, context)
 
     if game_data == "game_apple":
