@@ -61,7 +61,7 @@ class Config:
     INACTIVITY_PENALTY = -1.0       # İnaktivite cezası (diamond)
 
     # ========== GÜNLÜK KAZANÇ LİMİTİ ==========
-    DAILY_EARN_CAP = 25.0           # Kullanıcının günde kazanabileceği maksimum diamond (0 = sınırsız)
+    DAILY_EARN_CAP = 20.0           # Kullanıcının günde kazanabileceği maksimum diamond (0 = sınırsız)
 
     # ========== KASA HAVUZU (RTP) KONTROLÜ ==========
     # Toplam dağıtılan / toplam yatırılan > RTP_THRESHOLD ise kazanma ihtimallerini düşür
@@ -637,7 +637,7 @@ class Database:
         return None
 
     def create_user(self, user_id: int, username: str, referred_by: Optional[int] = None):
-        """Yeni kullanıcı oluştur - Anti-spam referral sistemi"""
+        """Yeni kullanıcı oluştur - Referral bonusu aninda verilir"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
@@ -649,20 +649,14 @@ class Database:
                 ON CONFLICT (user_id) DO NOTHING
             """, (user_id, username, Config.NEW_USER_BONUS, referred_by, current_time, current_time, current_time))
 
-            # Eğer referal varsa, ödülü pending olarak kaydet (anti-spam)
+            # Referral varsa diamond'i ANINDA ver
             if referred_by:
                 cursor.execute("""
-                    INSERT INTO pending_referral_rewards (referrer_id, referred_id, reward, created_date, paid)
-                    VALUES (%s, %s, %s, %s, FALSE)
-                    ON CONFLICT (referrer_id, referred_id) DO NOTHING
-                """, (referred_by, user_id, Config.REFERAL_REWARD, current_time))
-
-                # Referal sayısını hemen artır ama diamond'ı henüz verme
-                cursor.execute("""
                     UPDATE users
-                    SET referral_count = referral_count + 1
+                    SET referral_count = referral_count + 1,
+                        diamond = diamond + %s
                     WHERE user_id = %s
-                """, (referred_by,))
+                """, (Config.REFERAL_REWARD, referred_by))
 
                 conn.commit()
                 cursor.close()
@@ -673,7 +667,7 @@ class Database:
             conn.commit()
         except Exception as e:
             conn.rollback()
-            logging.error(f"Kullanıcı oluşturma hatası: {e}")
+            logging.error(f"Kullanici olusturma hatasi: {e}")
         finally:
             if not conn.closed:
                 try:
@@ -1396,27 +1390,19 @@ class Database:
     # ========== OYUN SAYACI VE REFERRAL ANTI-SPAM ==========
 
     def increment_game_count(self, user_id: int):
-        """Kullanıcının oyun sayısını artır ve bekleyen referral ödüllerini kontrol et."""
+        """Kullanicinin oyun sayisini artir."""
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute("""
                 UPDATE users SET game_count = game_count + 1 WHERE user_id = %s
-                RETURNING game_count, referred_by
             """, (user_id,))
-            row = cursor.fetchone()
             conn.commit()
             cursor.close()
             self.return_connection(conn)
-
-            if row:
-                game_count, referred_by = row
-                # 10 oyun eşiğine ulaşıldıysa referrer'a ödülü ver
-                if game_count == Config.REFERAL_MIN_GAMES and referred_by:
-                    self._pay_pending_referral(user_id, referred_by)
         except Exception as e:
             conn.rollback()
-            logging.error(f"Oyun sayacı hatası: {e}")
+            logging.error(f"Oyun sayaci hatasi: {e}")
             try:
                 cursor.close()
                 self.return_connection(conn)
@@ -1424,7 +1410,7 @@ class Database:
                 pass
 
     def _pay_pending_referral(self, referred_id: int, referrer_id: int):
-        """Bekleyen referral ödülünü öde."""
+        """Bekleyen referral ödülünü öde. Ödeme başarılıysa reward miktarını döndürür."""
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
@@ -1443,10 +1429,12 @@ class Database:
                 # Referrer'a diamond ekle
                 self.update_diamond(referrer_id, reward)
                 logging.info(f"Referral ödülü ödendi: referrer={referrer_id}, referred={referred_id}, reward={reward}")
+                return reward  # Bildirim göndermek için reward'ı döndür
             else:
                 conn.rollback()
                 cursor.close()
                 self.return_connection(conn)
+                return None
         except Exception as e:
             conn.rollback()
             logging.error(f"Referral ödeme hatası: {e}")
@@ -1455,6 +1443,7 @@ class Database:
                 self.return_connection(conn)
             except Exception:
                 pass
+            return None
 
     # ========== ŞÜPHELİ AKTİVİTE LOGLAMA ==========
 
@@ -1782,7 +1771,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         if referred_by:
-            welcome_msg += f"🎁 Sizi çagyran adama hem <b>{Config.REFERAL_REWARD} diamond</b> berildi!\n"
+            welcome_msg += f"🎁 Sizi çagyran adama <b>+{Config.REFERAL_REWARD} diamond</b> berildi!\n"
 
             try:
                 referrer_data = db.get_user(referred_by)
@@ -1792,7 +1781,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         text=(
                             f"🎉 <b>Täze Referal!</b>\n\n"
                             f"👤 @{user.username or user.first_name} siziň referalyňyz bilen bota goşuldy!\n"
-                            f"💎 Bonus: <b>+{Config.REFERAL_REWARD} diamond</b>\n\n"
+                            f"💎 Bonus: <b>+{Config.REFERAL_REWARD} diamond</b> — eýýäm hasabyňyza geldi!\n\n"
                             f"👥 Jemi referalyňyz: <b>{referrer_data['referral_count'] + 1}</b>"
                         ),
                         parse_mode="HTML"
@@ -2025,30 +2014,6 @@ def main():
         first=60  # İlk çalıştırma 60 saniye sonra
     )
 
-
-    # ============ KEEP-ALIVE (Railway uyku modunu önle) ============
-    KEEP_ALIVE_CHANNEL = "@ononlemlem"
-
-    async def keep_alive_job(context: ContextTypes.DEFAULT_TYPE):
-        """Her 4 dakikada bir kanala sessiz mesaj gönder — Railway uyku modunu önler"""
-        try:
-            now = datetime.now().strftime("%H:%M:%S")
-            await context.bot.send_message(
-                chat_id=KEEP_ALIVE_CHANNEL,
-                text=f"🤖 Bot aktif | {now}",
-                disable_notification=True  # Sessiz bildirim — kullanıcıları rahatsız etmez
-            )
-            logging.info(f"✅ Keep-alive mesajı gönderildi: {now}")
-        except Exception as e:
-            logging.warning(f"⚠️ Keep-alive hatası: {e}")
-
-    # Her 4 dakikada bir çalıştır (Railway'in uyku süresi genellikle 5 dakikadır)
-    application.job_queue.run_repeating(
-        keep_alive_job,
-        interval=240,   # 4 dakika (saniye cinsinden)
-        first=30        # Bot başladıktan 30 saniye sonra ilk mesajı gönder
-    )
-    print("🔄 Keep-alive görevi aktif! (Her 4 dakikada @ononlemlem kanalına mesaj)")
 
     # ============ SLOT BUTONU KURULUMU ============
     async def setup_slot_on_startup(application):
