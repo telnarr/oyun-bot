@@ -52,7 +52,7 @@ class Config:
     WITHDRAW_OPTIONS = [30.0]
 
     # ========== REFERAL SİSTEMİ ==========
-    REFERAL_REWARD = 0.5            # Referali çağırana verilen diamond
+    REFERAL_REWARD = 1.5            # Referali çağırana verilen diamond
     REFERAL_MIN_GAMES = 5          # Ödül aktive olmak için davet edilen kişinin oynaması gereken oyun sayısı (anti-spam)
     NEW_USER_BONUS = 1.5            # Yeni kullanıcıya verilen başlangıç bonusu
 
@@ -61,7 +61,7 @@ class Config:
     INACTIVITY_PENALTY = -1.0       # İnaktivite cezası (diamond)
 
     # ========== GÜNLÜK KAZANÇ LİMİTİ ==========
-    DAILY_EARN_CAP = 20.0           # Kullanıcının günde kazanabileceği maksimum diamond (0 = sınırsız)
+    DAILY_EARN_CAP = 25.0           # Kullanıcının günde kazanabileceği maksimum diamond (0 = sınırsız)
 
     # ========== KASA HAVUZU (RTP) KONTROLÜ ==========
     # Toplam dağıtılan / toplam yatırılan > RTP_THRESHOLD ise kazanma ihtimallerini düşür
