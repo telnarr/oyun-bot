@@ -2026,6 +2026,30 @@ def main():
     )
 
 
+    # ============ KEEP-ALIVE (Railway uyku modunu önle) ============
+    KEEP_ALIVE_CHANNEL = "@ononlemlem"
+
+    async def keep_alive_job(context: ContextTypes.DEFAULT_TYPE):
+        """Her 4 dakikada bir kanala sessiz mesaj gönder — Railway uyku modunu önler"""
+        try:
+            now = datetime.now().strftime("%H:%M:%S")
+            await context.bot.send_message(
+                chat_id=KEEP_ALIVE_CHANNEL,
+                text=f"🤖 Bot aktif | {now}",
+                disable_notification=True  # Sessiz bildirim — kullanıcıları rahatsız etmez
+            )
+            logging.info(f"✅ Keep-alive mesajı gönderildi: {now}")
+        except Exception as e:
+            logging.warning(f"⚠️ Keep-alive hatası: {e}")
+
+    # Her 4 dakikada bir çalıştır (Railway'in uyku süresi genellikle 5 dakikadır)
+    application.job_queue.run_repeating(
+        keep_alive_job,
+        interval=240,   # 4 dakika (saniye cinsinden)
+        first=30        # Bot başladıktan 30 saniye sonra ilk mesajı gönder
+    )
+    print("🔄 Keep-alive görevi aktif! (Her 4 dakikada @ononlemlem kanalına mesaj)")
+
     # ============ SLOT BUTONU KURULUMU ============
     async def setup_slot_on_startup(application):
         try:
